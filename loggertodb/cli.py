@@ -23,6 +23,7 @@ class UnsupportedFormat(Exception):
 
 @click.command()
 @click.argument("configfile")
+@click.version_option()
 def main(configfile):
     """Insert meteorological logger data to Enhydris"""
 
