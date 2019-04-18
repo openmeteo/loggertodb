@@ -25,6 +25,37 @@ loggertodb
 
 Insert meteorological station data to Enhydris
 
+License
+=======
 
-* Free software: GNU General Public License v3
-* Documentation: https://loggertodb.readthedocs.io.
+Free software: GNU General Public License v3
+
+Documentation
+=============
+
+https://loggertodb.readthedocs.io.
+
+Creating a Windows executable
+=============================
+
+On Windows; the first time:
+
+ 1. Install ``git``.
+ 2. Install a recent Python 3 version.
+ 3. Execute Git Bash.
+ 4. Clone loggertodb.
+ 5. Change to the working directory of ``loggertodb``.
+ 6. ``pip install virtualenv==16.1.0`` (this is because of a
+    `pyinstaller bug`_).
+ 7. ``virtualenv ../venv``
+ 8. ``../venv/Scripts/pip install -e .``
+ 9. ``../venv/Scripts/pip install pyinstaller``
+
+.. _pyinstaller bug: https://github.com/pyinstaller/pyinstaller/issues/4064
+
+Next times:
+
+ 1. ``rm -r dist loggertodb-windows.spec``
+ 2. ``../venv/Scripts/pyinstaller --onefile --name=loggertodb bin/loggertodb-windows``
+
+After this, ``loggertodb.exe`` should be in the ``dist`` directory.

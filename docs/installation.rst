@@ -9,8 +9,10 @@ Installation
 Windows
 =======
 
-Download and execute the Windows executable installer
-(``loggertodb-X.Y.Z-setup.exe``) from
+``loggertodb`` is just a single executable, ``loggertodb.exe``. You
+download it and run it; there's no installer.
+
+Download ``loggertodb.exe`` from
 https://github.com/openmeteo/loggertodb/releases/.
 
 Linux

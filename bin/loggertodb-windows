@@ -1,0 +1,14 @@
+"""Executable script for pyinstaller.
+
+Normally we shouldn't need this script. "pip install loggertodb"
+installs a "loggertodb" script which has been created because of the
+"entry_points" argument  to setuptools.setup(). However, pyinstaller,
+which we use to create a single-file loggertodb.exe on windows, does not
+support "entry_points", so we add this script which is more or less
+identical to the one created by setuptools.
+"""
+import sys
+
+from loggertodb.cli import main
+
+sys.exit(main())
