@@ -55,7 +55,7 @@ def main(configfile):
         # Setup logger
         logger.setLevel(loglevel.upper())
         if logfile:
-            logger.removeHandler(logging.stdout_handler)
+            logger.removeHandler(stdout_handler)
             logger.addHandler(logging.FileHandler(logfile))
 
         # Log start of execution
