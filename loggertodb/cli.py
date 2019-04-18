@@ -8,7 +8,7 @@ import click
 from enhydris_api_client import EnhydrisApiClient
 from htimeseries import HTimeseries
 
-from . import meteologgerstorage
+from . import __version__, meteologgerstorage
 from .exceptions import LoggerToDbError
 
 
@@ -23,7 +23,7 @@ class UnsupportedFormat(Exception):
 
 @click.command()
 @click.argument("configfile")
-@click.version_option()
+@click.version_option(version=__version__, prog_name="loggertodb")
 def main(configfile):
     """Insert meteorological logger data to Enhydris"""
 
