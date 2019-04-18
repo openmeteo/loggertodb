@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 import textwrap
 from unittest import TestCase
 from unittest.mock import call, patch
@@ -168,6 +169,38 @@ class CorrectConfigurationTestCase(TestCase):
         self.mock_update_db.assert_called_once_with(
             self.mock_client.return_value, self.mock_meteologgerstorage.return_value
         )
+
+
+class CorrectConfigurationWithLogFileTestCase(TestCase):
+    @patch("loggertodb.cli.EnhydrisApiClient")
+    @patch("loggertodb.cli.update_database")
+    @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
+    def test_creates_log_file(self, *args):
+        self.mock_meteologgerstorage = args[0]
+        self.mock_update_db = args[1]
+        self.mock_client = args[2]
+        runner = CliRunner(mix_stderr=False)
+        with runner.isolated_filesystem():
+            with open("loggertodb.conf", "w") as f:
+                f.write(
+                    textwrap.dedent(
+                        """\
+                        [General]
+                        base_url = https://example.com
+                        username = a_user
+                        password = a_password
+                        logfile = deleteme
+
+                        [My station]
+                        storage_format = simple
+                        station_id = 1334
+                        path = .
+                        fields = 1,2,3
+                        """
+                    )
+                )
+            self.result = runner.invoke(cli.main, ["loggertodb.conf"])
+            self.assertTrue(os.path.exists("deleteme"))
 
 
 class UpdateDatabaseTestCase(TestCase):
