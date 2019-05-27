@@ -2,6 +2,13 @@
 History
 =======
 
+0.1.2 (2019-05-27)
+==================
+
+- Made parsing dates more robust in simple format
+- Fixed extreme slowness when thousands of records had to be inserted
+- Fixed unhelpful error message when file was out of order
+
 0.1.1 (2019-04-18)
 ==================
 
