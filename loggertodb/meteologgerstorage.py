@@ -298,7 +298,8 @@ class MeteologgerStorage_simple(TextFileMeteologgerStorage):
     def _extract_timestamp(self, line):
         try:
             items = line.split(self.delimiter)
-            datestr = items[self.nfields_to_ignore].strip('"')
+            datestr = items[self.nfields_to_ignore]
+            datestr = datestr.strip().strip('"').strip()
             self._separate_time = False
             if len(datestr) <= 10:
                 datestr += " " + items[self.nfields_to_ignore + 1].strip('"')
