@@ -65,6 +65,69 @@ class ExtractTimestampTestCase(TestCase):
                 "ign1,ign2,29/2/2019 13:47,25.2,42.3\n"
             )
 
+    def test_ignores_leading_spaces(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                "ign1,ign2, 28/2/2019 13:47,25.2,42.3\n"
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
+    def test_ignores_trailing_spaces(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                "ign1,ign2,28/2/2019 13:47 ,25.2,42.3\n"
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
+    def test_ignores_double_quotes(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                'ign1,ign2,"28/2/2019 13:47",25.2,42.3\n'
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
+    def test_ignores_leading_spaces_before_opening_quote(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                'ign1,ign2, "28/2/2019 13:47",25.2,42.3\n'
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
+    def test_ignores_trailing_spaces_after_closing_quote(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                'ign1,ign2,"28/2/2019 13:47" ,25.2,42.3\n'
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
+    def test_ignores_leading_spaces_after_opening_quote(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                'ign1,ign2," 28/2/2019 13:47",25.2,42.3\n'
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
+    def test_ignores_trailing_spaces_before_closing_quote(self):
+        self.assertEqual(
+            self.meteologger_storage._extract_timestamp(
+                'ign1,ign2,"28/2/2019 13:47 ",25.2,42.3\n'
+            ),
+            dt.datetime(2019, 2, 28, 13, 47),
+        )
+        self.assertFalse(self.meteologger_storage._separate_time)
+
 
 class GetItemFromLineTestCase(TestCase):
     def setUp(self):

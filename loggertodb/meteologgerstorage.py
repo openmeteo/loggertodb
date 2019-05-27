@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from glob import glob
 
 import iso8601
+import numpy as np
 import pandas as pd
 from pytz import timezone
 from simpletail import ropen
@@ -52,7 +53,27 @@ class MeteologgerStorage(ABC):
         if after_timestamp < cached_after_timestamp:
             self._extract_data(after_timestamp=after_timestamp)
         from_timestamp = after_timestamp + dt.timedelta(seconds=1)
-        return self._cached_data[ts_id][from_timestamp:]
+        self._check_monotonic(self._cached_data[ts_id].index)
+        return self._cached_data[ts_id].loc[from_timestamp:]
+
+    def _check_monotonic(self, index):
+        if index.is_monotonic:
+            return
+        else:
+            self._raise_monotonic_exception(index)
+
+    def _raise_monotonic_exception(self, index):
+        offending_date = self._locate_first_nonmonotonic_date(index)
+        raise ValueError(
+            "File is incorrectly ordered after " + offending_date.isoformat()
+        )
+
+    def _locate_first_nonmonotonic_date(self, index):
+        prev = None
+        for current in index:
+            if prev is not None and prev > current:
+                return prev
+            prev = current
 
     def _extract_data(self, after_timestamp):
         """Extract the part of the storage that is after_timestamp.
@@ -76,24 +97,31 @@ class MeteologgerStorage(ABC):
             )
 
         # Start with empty time series
-        _cached_data = {
-            ts_id: pd.DataFrame(columns=["value", "flags"])
+        index = np.empty(len(storage_tail), dtype="datetime64[s]")
+        data = {
+            ts_id: np.empty((len(storage_tail), 2), dtype=object)
             for ts_id in self.timeseries_ids
         }
 
         # Iterate through the storage tail and fill in the time series
         try:
-            for record in storage_tail:
+            for i, record in enumerate(storage_tail):
                 for ts_id in self.timeseries_ids:
                     v, f = self._extract_value_and_flags(ts_id, record)
-                    _cached_data[ts_id].at[record["timestamp"], "value"] = v
-                    _cached_data[ts_id].at[record["timestamp"], "flags"] = f
+                    index[i] = np.datetime64(record["timestamp"])
+                    data[ts_id][i, 0] = v
+                    data[ts_id][i, 1] = f
         except ValueError as e:
             message = "parsing error while trying to read values: " + str(e)
             self._raise_error(record["line"], message)
 
         # Replace self._cached_data and self._after_timestamp, if any
-        self._cached_data = _cached_data
+        self._cached_data = {
+            ts_id: pd.DataFrame(
+                columns=["value", "flags"], index=index, data=data[ts_id]
+            )
+            for ts_id in self.timeseries_ids
+        }
         self._cached_after_timestamp = after_timestamp
 
     @abstractmethod
@@ -298,7 +326,8 @@ class MeteologgerStorage_simple(TextFileMeteologgerStorage):
     def _extract_timestamp(self, line):
         try:
             items = line.split(self.delimiter)
-            datestr = items[self.nfields_to_ignore].strip('"')
+            datestr = items[self.nfields_to_ignore]
+            datestr = datestr.strip().strip('"').strip()
             self._separate_time = False
             if len(datestr) <= 10:
                 datestr += " " + items[self.nfields_to_ignore + 1].strip('"')
