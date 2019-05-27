@@ -53,7 +53,27 @@ class MeteologgerStorage(ABC):
         if after_timestamp < cached_after_timestamp:
             self._extract_data(after_timestamp=after_timestamp)
         from_timestamp = after_timestamp + dt.timedelta(seconds=1)
+        self._check_monotonic(self._cached_data[ts_id].index)
         return self._cached_data[ts_id].loc[from_timestamp:]
+
+    def _check_monotonic(self, index):
+        if index.is_monotonic:
+            return
+        else:
+            self._raise_monotonic_exception(index)
+
+    def _raise_monotonic_exception(self, index):
+        offending_date = self._locate_first_nonmonotonic_date(index)
+        raise ValueError(
+            "File is incorrectly ordered after " + offending_date.isoformat()
+        )
+
+    def _locate_first_nonmonotonic_date(self, index):
+        prev = None
+        for current in index:
+            if prev is not None and prev > current:
+                return prev
+            prev = current
 
     def _extract_data(self, after_timestamp):
         """Extract the part of the storage that is after_timestamp.
@@ -77,10 +97,7 @@ class MeteologgerStorage(ABC):
             )
 
         # Start with empty time series
-        index = {
-            ts_id: np.empty(len(storage_tail), dtype="datetime64[s]")
-            for ts_id in self.timeseries_ids
-        }
+        index = np.empty(len(storage_tail), dtype="datetime64[s]")
         data = {
             ts_id: np.empty((len(storage_tail), 2), dtype=object)
             for ts_id in self.timeseries_ids
@@ -91,7 +108,7 @@ class MeteologgerStorage(ABC):
             for i, record in enumerate(storage_tail):
                 for ts_id in self.timeseries_ids:
                     v, f = self._extract_value_and_flags(ts_id, record)
-                    index[ts_id][i] = np.datetime64(record["timestamp"])
+                    index[i] = np.datetime64(record["timestamp"])
                     data[ts_id][i, 0] = v
                     data[ts_id][i, 1] = f
         except ValueError as e:
@@ -101,7 +118,7 @@ class MeteologgerStorage(ABC):
         # Replace self._cached_data and self._after_timestamp, if any
         self._cached_data = {
             ts_id: pd.DataFrame(
-                columns=["value", "flags"], index=index[ts_id], data=data[ts_id]
+                columns=["value", "flags"], index=index, data=data[ts_id]
             )
             for ts_id in self.timeseries_ids
         }

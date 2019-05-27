@@ -25,6 +25,16 @@ class DummyMeteologgerStorage(MeteologgerStorage):
         return (15, 16)
 
 
+class DummyWrongOrderMeteologgerStorage(DummyMeteologgerStorage):
+    """A file with a storage tail that contains records in the wrong order.
+    """
+
+    def _get_storage_tail(self, after_timestamp):
+        result = super()._get_storage_tail(after_timestamp)
+        result.reverse()
+        return result
+
+
 class MeteologgerStorageCheckParametersTestCase(TestCase):
     def test_raises_error_on_path_missing(self):
         expected_error_message = 'Parameter "path" is required'
@@ -82,6 +92,20 @@ class MeteologgerStorageGetRecentDataTestCase(TestCase):
             dtype=object,
         )
         pd.testing.assert_frame_equal(second_result, expected_result)
+
+
+class MeteologgerStorageGetRecentDataWrongOrderTestCase(TestCase):
+    def setUp(self):
+        self.storage = DummyWrongOrderMeteologgerStorage(
+            {"station_id": 1334, "path": "irrelevant", "storage_format": "dummy"}
+        )
+
+    def test_exception(self):
+        msg = "incorrectly ordered after 2019-02-27T12:54:00"
+        with self.assertRaisesRegex(ValueError, msg):
+            self.result = self.storage.get_recent_data(
+                15, dt.datetime(2019, 2, 27, 12, 52)
+            )
 
 
 class PatchableDatetime(dt.datetime):
