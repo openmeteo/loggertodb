@@ -9,11 +9,11 @@ with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [
-    "Click>=6.0",
+    "Click>=7.0,<8",
     "iso8601",
-    "htimeseries>=0.2",
+    "htimeseries>=1,<2",
     "simpletail",
-    "enhydris_api_client>=0.2",
+    "enhydris_api_client>=0.3,<1",
 ]
 
 setup_requirements = []
@@ -37,6 +37,7 @@ setup(
     install_requires=requirements,
     license="GNU General Public License v3",
     long_description=readme + "\n\n" + history,
+    long_description_content_type="text/x-rst",
     include_package_data=True,
     keywords="loggertodb",
     name="loggertodb",

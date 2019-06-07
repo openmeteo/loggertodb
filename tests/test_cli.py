@@ -206,6 +206,7 @@ class CorrectConfigurationWithLogFileTestCase(TestCase):
 class UpdateDatabaseTestCase(TestCase):
     @patch("loggertodb.cli.EnhydrisApiClient")
     @patch("loggertodb.cli.meteologgerstorage.MeteologgerStorage_simple")
+    @patch("loggertodb.cli.HTimeseries", new=lambda x: x)
     def setUp(self, mock_meteologgerstorage, mock_client):
         # Configure EnhydrisApiClient mock
         self.mock_client = mock_client
