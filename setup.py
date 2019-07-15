@@ -13,7 +13,7 @@ requirements = [
     "iso8601",
     "htimeseries>=1,<2",
     "simpletail",
-    "enhydris_api_client>=0.3,<1",
+    "enhydris-api-client>=0.3,<1",
 ]
 
 setup_requirements = []
