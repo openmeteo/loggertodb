@@ -212,10 +212,10 @@ station_id
    The id of the station.
 
 path
-   The full pathname of the data file.
+   The full pathname of the data storage.
 
 storage_format
-   The format of the datafile. See `Supported formats`_.
+   The format of the data storage. See `Supported formats`_.
 
 fields
    (Not for the wdat5 format.) A series of comma-separated integers
@@ -326,10 +326,18 @@ simple
    second specifier if the times contain seconds, but these seconds
    are actually subsequently ignored.
 
-   The ``nfields_to_ignore`` parameter can be used to remove a number
-   of fields from the beginning of each line; this is useful in some
-   formats where the date and time are preceeded by a record id or
-   other field.
+   The ``nfields_to_ignore`` parameter can be used to ignore a number of
+   fields in the beginning of each line; this is useful in some formats
+   where the date and time are preceeded by a record id or other field.
+
+   If ``path`` contains one of the characters `*?[]`, it is considered
+   to be a pattern that matches many files whose concatenation (ignoring
+   any headers) would be the complete list of records. glob_ is used to
+   find the matching files. ``loggertodb`` does not assume the filenames
+   are ordered in any way; it determines the order by opening all the
+   files and reading a date from each one.
+
+   .. _glob: https://docs.python.org/3/library/glob.html
 
 CR1000
    Date and time in ISO8601, the first two fields after the date are

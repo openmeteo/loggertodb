@@ -218,8 +218,12 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         pass
 
     def _get_storage_tail(self, after_timestamp):
+        return self._get_storage_tail_from_file(self.path, after_timestamp)[0]
+
+    def _get_storage_tail_from_file(self, pathname, after_timestamp):
         result = []
-        with ropen(self.path, encoding=self.encoding, errors="replace") as xr:
+        reached_after_timestamp = False
+        with ropen(pathname, encoding=self.encoding, errors="replace") as xr:
             prev_timestamp = ""
             for line in xr:
                 if self._must_ignore_line(line):
@@ -237,11 +241,12 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
                 prev_timestamp = timestamp
                 self.logger.debug("Timestamp: " + timestamp.isoformat())
                 if timestamp <= after_timestamp:
+                    reached_after_timestamp = True
                     break
                 result.append({"timestamp": timestamp, "line": line})
 
         result.reverse()
-        return result
+        return (result, reached_after_timestamp)
 
     def _must_ignore_line(self, line):
         if not line.strip() or not self._subset_identifiers_match(line):
@@ -249,6 +254,42 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         if not self.ignore_lines:
             return False
         return bool(re.search(self.ignore_lines, line))
+
+
+class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
+    def _get_storage_tail(self, after_timestamp):
+        if any(c in "*?[]" for c in self.path):
+            return self._get_storage_tail_from_multiple_files(after_timestamp)
+        else:
+            return super()._get_storage_tail(after_timestamp)
+
+    def _get_storage_tail_from_multiple_files(self, after_timestamp):
+        self._get_sorted_pathnames()
+        return self._get_storage_tail_from_sorted_pathnames(after_timestamp)
+
+    def _get_sorted_pathnames(self):
+        pathnames = glob(self.path)
+        self._sorted_pathnames = sorted(pathnames, key=self._extract_a_date_from_file)
+
+    def _extract_a_date_from_file(self, pathname):
+        with ropen(pathname, encoding=self.encoding, errors="replace") as xr:
+            for line in xr:
+                if self._must_ignore_line(line):
+                    continue
+                timestamp = self._extract_timestamp(line).replace(second=0)
+                timestamp = self._fix_dst(timestamp)
+                return timestamp
+
+    def _get_storage_tail_from_sorted_pathnames(self, after_timestamp):
+        result = []
+        for pathname in reversed(self._sorted_pathnames):
+            partial_result, reached_after_timestamp = self._get_storage_tail_from_file(
+                pathname, after_timestamp
+            )
+            result = partial_result + result
+            if reached_after_timestamp:
+                break
+        return result
 
 
 class MeteologgerStorage_deltacom(TextFileMeteologgerStorage):
@@ -331,7 +372,7 @@ class MeteologgerStorage_CR1000(TextFileMeteologgerStorage):
         return si == self.subset_identifiers
 
 
-class MeteologgerStorage_simple(TextFileMeteologgerStorage):
+class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
     def get_optional_parameters(self):
         more_parms = {"nfields_to_ignore", "delimiter", "date_format"}
         return super().get_optional_parameters() | more_parms
