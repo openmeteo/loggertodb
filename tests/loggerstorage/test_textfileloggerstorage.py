@@ -133,3 +133,49 @@ class GetStorageTailTestCase(TestCase):
                 },
             ],
         )
+
+
+class IgnoreLinesTestCase(TestCase):
+    def setUp(self):
+        meteologger_storage = DummyTextFileMeteologgerStorage(
+            {
+                "station_id": 1334,
+                "path": "/foo/bar",
+                "storage_format": "dummy",
+                "fields": "5, 6",
+                "nullstr": "NULL",
+                "ignore_lines": "ignore( this)? line",
+            }
+        )
+        with Patcher() as patcher:
+            patcher.fs.create_file(
+                "/foo/bar",
+                contents=textwrap.dedent(
+                    """\
+                    ignore line
+                    2019-02-28 17:20,42.1,24.2
+                    ignore this line
+                    2019-02-28 17:30,42.2,24.3
+                    yes, really ignore line man!
+                    2019-02-28 17:40,42.3,24.4
+                    """
+                ),
+            )
+            self.result = meteologger_storage._get_storage_tail(
+                dt.datetime(2019, 2, 28, 17, 20)
+            )
+
+    def test_result(self):
+        self.assertEqual(
+            self.result,
+            [
+                {
+                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "line": "2019-02-28 17:30,42.2,24.3\n",
+                },
+                {
+                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "line": "2019-02-28 17:40,42.3,24.4\n",
+                },
+            ],
+        )

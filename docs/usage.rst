@@ -256,12 +256,18 @@ nullstr
     ``nullstr = -9999``.
 
 delimiter, decimal_separator, date_format
-   Some file formats may be dependent upon regional settings; these
+   Some storage formats may be dependent upon regional settings; these
    formats support ``delimiter``, ``decimal_separator``, and
    ``date_format``.  ``date_format`` is specified in the same way as for
    `strftime(3)`_.
    
    .. _strftime(3): http://docs.python.org/lib/module-time.html
+
+ignore_lines
+    For storage formats that are text files, it specifies a regular
+    expression that, if it matches, the line will be ignored. This is
+    useful to ignore header lines or otherwise lines that shouldn't be
+    processed.
 
 timezone
    See `Daylight saving time`_.

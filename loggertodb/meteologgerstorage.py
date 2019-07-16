@@ -180,12 +180,13 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         self.date_format = parameters.get("date_format", "")
         self.nullstr = parameters.get("nullstr", "")
         self.nfields_to_ignore = int(parameters.get("nfields_to_ignore", "0"))
+        self.ignore_lines = parameters.get("ignore_lines", "")
 
     def get_required_parameters(self):
         return super().get_required_parameters() | {"fields"}
 
     def get_optional_parameters(self):
-        return super().get_optional_parameters() | {"nullstr"}
+        return super().get_optional_parameters() | {"nullstr", "ignore_lines"}
 
     @property
     def timeseries_ids(self):
@@ -216,11 +217,11 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         with ropen(self.path) as xr:
             prev_timestamp = ""
             for line in xr:
-                self.logger.debug(line)
-
-                # Omit empty or irrelevant lines
-                if not line.strip() or not self._subset_identifiers_match(line):
+                if self._must_ignore_line(line):
+                    self.logger.debug("Ignoring line '{}'".format(line))
                     continue
+                else:
+                    self.logger.debug("Parsing line '{}'".format(line))
 
                 timestamp = self._extract_timestamp(line).replace(second=0)
                 timestamp = self._fix_dst(timestamp)
@@ -236,6 +237,13 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
 
         result.reverse()
         return result
+
+    def _must_ignore_line(self, line):
+        if not line.strip() or not self._subset_identifiers_match(line):
+            return True
+        if not self.ignore_lines:
+            return False
+        return bool(re.search(self.ignore_lines, line))
 
 
 class MeteologgerStorage_deltacom(TextFileMeteologgerStorage):
