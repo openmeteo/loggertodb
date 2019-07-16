@@ -2,6 +2,12 @@
 History
 =======
 
+0.2.0 (2019-07-16)
+==================
+
+- Added multi-file option to simple format.
+- Added configuration parameters "encoding" and "ignore_lines".
+
 0.1.3 (2019-06-07)
 ==================
 
