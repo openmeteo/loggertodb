@@ -179,3 +179,97 @@ class IgnoreLinesTestCase(TestCase):
                 },
             ],
         )
+
+
+class EncodingTestCase(TestCase):
+    def setUp(self):
+        meteologger_storage = DummyTextFileMeteologgerStorage(
+            {
+                "station_id": 1334,
+                "path": "/foo/bar",
+                "storage_format": "dummy",
+                "fields": "5, 6",
+                "nullstr": "NULL",
+                "ignore_lines": "n' est pas",
+                "encoding": "iso-8859-1",
+            }
+        )
+        with Patcher() as patcher:
+            patcher.fs.create_file(
+                "/foo/bar",
+                encoding="iso-8859-1",
+                contents=textwrap.dedent(
+                    """\
+                    2019-02-28 17:20,42.1,24.2
+                    Cette ligne n' est pas très importante
+                    2019-02-28 17:30,42.2,24.3
+                    2019-02-28 17:40,42.3,24.4
+                    """
+                ),
+            )
+            self.result = meteologger_storage._get_storage_tail(
+                dt.datetime(2019, 2, 28, 17, 20)
+            )
+
+    def test_result(self):
+        self.assertEqual(
+            self.result,
+            [
+                {
+                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "line": "2019-02-28 17:30,42.2,24.3\n",
+                },
+                {
+                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "line": "2019-02-28 17:40,42.3,24.4\n",
+                },
+            ],
+        )
+
+
+class EncodingErrorsTestCase(TestCase):
+    def setUp(self):
+        # We use an iso-8859-1-encoded file but without declaring the encoding in the
+        # parameters, so when it attempts to read it it will try utf8. It should forgive
+        # the error
+        meteologger_storage = DummyTextFileMeteologgerStorage(
+            {
+                "station_id": 1334,
+                "path": "/foo/bar",
+                "storage_format": "dummy",
+                "fields": "5, 6",
+                "nullstr": "NULL",
+                "ignore_lines": "n' est pas",
+            }
+        )
+        with Patcher() as patcher:
+            patcher.fs.create_file(
+                "/foo/bar",
+                encoding="iso-8859-1",
+                contents=textwrap.dedent(
+                    """\
+                    2019-02-28 17:20,42.1,24.2
+                    Cette ligne n' est pas très importante
+                    2019-02-28 17:30,42.2,24.3
+                    2019-02-28 17:40,42.3,24.4
+                    """
+                ),
+            )
+            self.result = meteologger_storage._get_storage_tail(
+                dt.datetime(2019, 2, 28, 17, 20)
+            )
+
+    def test_result(self):
+        self.assertEqual(
+            self.result,
+            [
+                {
+                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "line": "2019-02-28 17:30,42.2,24.3\n",
+                },
+                {
+                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "line": "2019-02-28 17:40,42.3,24.4\n",
+                },
+            ],
+        )

@@ -181,12 +181,17 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         self.nullstr = parameters.get("nullstr", "")
         self.nfields_to_ignore = int(parameters.get("nfields_to_ignore", "0"))
         self.ignore_lines = parameters.get("ignore_lines", "")
+        self.encoding = parameters.get("encoding", "utf8")
 
     def get_required_parameters(self):
         return super().get_required_parameters() | {"fields"}
 
     def get_optional_parameters(self):
-        return super().get_optional_parameters() | {"nullstr", "ignore_lines"}
+        return super().get_optional_parameters() | {
+            "nullstr",
+            "ignore_lines",
+            "encoding",
+        }
 
     @property
     def timeseries_ids(self):
@@ -214,7 +219,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
 
     def _get_storage_tail(self, after_timestamp):
         result = []
-        with ropen(self.path) as xr:
+        with ropen(self.path, encoding=self.encoding, errors="replace") as xr:
             prev_timestamp = ""
             for line in xr:
                 if self._must_ignore_line(line):

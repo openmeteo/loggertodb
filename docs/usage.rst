@@ -264,10 +264,16 @@ delimiter, decimal_separator, date_format
    .. _strftime(3): http://docs.python.org/lib/module-time.html
 
 ignore_lines
-    For storage formats that are text files, it specifies a regular
-    expression that, if it matches, the line will be ignored. This is
-    useful to ignore header lines or otherwise lines that shouldn't be
-    processed.
+   For storage formats that are text files, it specifies a regular
+   expression that, if it matches, the line will be ignored. This is
+   useful to ignore header lines or otherwise lines that shouldn't be
+   processed.
+
+encoding
+   For storage formats that are text files, it specifies the encoding.
+   The default is utf8. `List of possible encodings`_.
+
+   .. _list of possible encodings: https://docs.python.org/3/library/codecs.html#standard-encodings
 
 timezone
    See `Daylight saving time`_.
