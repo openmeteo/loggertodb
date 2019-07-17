@@ -279,6 +279,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 timestamp = self._extract_timestamp(line).replace(second=0)
                 timestamp = self._fix_dst(timestamp)
                 return timestamp
+        return dt.datetime(1700, 1, 1, 0, 0)
 
     def _get_storage_tail_from_sorted_pathnames(self, after_timestamp):
         result = []
