@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 def get_version():
     scriptdir = os.path.dirname(os.path.abspath(__file__))
-    init_py_path = os.path.join(scriptdir, "loggertodb", "__init__.py")
+    init_py_path = os.path.join(scriptdir, "..", "loggertodb", "__init__.py")
     with open(init_py_path) as f:
         return re.search(r'^__version__ = "(.*?)"$', f.read(), re.MULTILINE).group(1)
 
