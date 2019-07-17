@@ -1,8 +1,7 @@
 import datetime as dt
 import textwrap
-from unittest import TestCase
 
-from pyfakefs.fake_filesystem_unittest import Patcher
+from pyfakefs.fake_filesystem_unittest import TestCase
 
 from loggertodb.meteologgerstorage import MultiTextFileMeteologgerStorage
 
@@ -22,13 +21,9 @@ class GetStorageTailTestCase(TestCase):
     use_headers_in_files = False
 
     def setUp(self):
-        self.patcher = Patcher()
-        self.patcher.__enter__()
+        self.setUpPyfakefs()
         self.meteologger_storage = self._get_meteologger_storage()
         self._create_files()
-
-    def tearDown(self):
-        self.patcher.__exit__(None, None, None)
 
     def _get_meteologger_storage(self):
         parms = {
@@ -49,7 +44,7 @@ class GetStorageTailTestCase(TestCase):
 
     def _create_test_file(self, pathname, year):
         headers = "Date,value1,value2\n" if self.use_headers_in_files else ""
-        self.patcher.fs.create_file(
+        self.fs.create_file(
             pathname,
             contents=textwrap.dedent(
                 """\
@@ -157,3 +152,138 @@ class GetStorageTailNoFilesTestCase(TestCase):
 
 class GetStorageTailWithHeadersTestCase(GetStorageTailTestCase):
     use_headers_in_files = True
+
+
+class GetStorageTailEmptyFileTestCase(TestCase):
+    def setUp(self):
+        self.setUpPyfakefs()
+        self.meteologger_storage = self._get_meteologger_storage()
+        self._create_files()
+
+    def _get_meteologger_storage(self):
+        parms = {
+            "station_id": 1334,
+            "path": "/foo/bar?",
+            "storage_format": "dummy",
+            "fields": "5, 6",
+            "nullstr": "NULL",
+            "ignore_lines": "Date",
+        }
+        return DummyMultiTextFileMeteologgerStorage(parms)
+
+    def _create_files(self):
+        self._create_test_file("/foo/bar1", 2018)
+        self._create_test_file("/foo/bar2", 2019)
+        self._create_test_file("/foo/bar3", None)
+
+    def _create_test_file(self, pathname, year):
+        if year is None:
+            self._create_empty_test_file(pathname)
+        else:
+            self._create_test_file_with_records(pathname, year)
+
+    def _create_empty_test_file(self, pathname):
+        self.fs.create_file(pathname, contents="Date,value1,value2\n")
+
+    def _create_test_file_with_records(self, pathname, year):
+        self.fs.create_file(
+            pathname,
+            contents=textwrap.dedent(
+                """\
+                Date,value1,value2
+                {}-02-28 17:20,42.1,24.2
+                {}-02-28 17:30,42.2,24.3
+                """.format(
+                    year, year
+                )
+            ),
+        )
+
+    def test_get_entire_storage_tail(self):
+        self.result = self.meteologger_storage._get_storage_tail(
+            dt.datetime(1700, 1, 1, 0, 0)
+        )
+        self.assertEqual(len(self.result), 4)
+
+
+class BadFileOrder(TestCase):
+    def setUp(self):
+        self.setUpPyfakefs()
+        self.meteologger_storage = self._get_meteologger_storage()
+        self._create_file()
+
+    def _get_meteologger_storage(self):
+        parms = {
+            "station_id": 1334,
+            "path": "/foo/bar?",
+            "storage_format": "dummy",
+            "fields": "5, 6",
+            "nullstr": "NULL",
+            "ignore_lines": "Date",
+        }
+        return DummyMultiTextFileMeteologgerStorage(parms)
+
+    def _create_file(self):
+        self.fs.create_file(
+            "/foo/bar1",
+            contents=textwrap.dedent(
+                """\
+                Date,value1,value2
+                2019-02-28 17:20,42.1,24.2
+                2018-02-28 17:30,42.2,24.3
+                """
+            ),
+        )
+
+    def test_raises_value_error(self):
+        msg = "The order of timestamps in file /foo/bar1 is mixed up."
+        with self.assertRaisesRegex(ValueError, msg):
+            self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))
+
+
+class FilesWithOverlap(TestCase):
+    def setUp(self):
+        self.setUpPyfakefs()
+        self.meteologger_storage = self._get_meteologger_storage()
+        self._create_file1()
+        self._create_file2()
+
+    def _get_meteologger_storage(self):
+        parms = {
+            "station_id": 1334,
+            "path": "/foo/bar?",
+            "storage_format": "dummy",
+            "fields": "5, 6",
+            "nullstr": "NULL",
+            "ignore_lines": "Date",
+        }
+        return DummyMultiTextFileMeteologgerStorage(parms)
+
+    def _create_file1(self):
+        self.fs.create_file(
+            "/foo/bar1",
+            contents=textwrap.dedent(
+                """\
+                Date,value1,value2
+                2018-02-28 17:20,42.1,24.2
+                2019-02-28 17:30,42.2,24.3
+                """
+            ),
+        )
+
+    def _create_file2(self):
+        self.fs.create_file(
+            "/foo/bar2",
+            contents=textwrap.dedent(
+                """\
+                Date,value1,value2
+                2019-02-28 17:20,42.1,24.2
+                2020-02-28 17:30,42.2,24.3
+                """
+            ),
+        )
+
+    def test_raises_value_error(self):
+        msg = "The timestamps in files /foo/bar1 and /foo/bar2 overlap."
+        with self.assertRaisesRegex(ValueError, msg):
+            self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))

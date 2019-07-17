@@ -65,7 +65,7 @@ class MeteologgerStorage(ABC):
     def _raise_monotonic_exception(self, index):
         offending_date = self._locate_first_nonmonotonic_date(index)
         raise ValueError(
-            "File is incorrectly ordered after " + offending_date.isoformat()
+            "Data is incorrectly ordered after " + offending_date.isoformat()
         )
 
     def _locate_first_nonmonotonic_date(self, index):
@@ -264,14 +264,33 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
             return super()._get_storage_tail(after_timestamp)
 
     def _get_storage_tail_from_multiple_files(self, after_timestamp):
-        self._get_sorted_pathnames()
-        return self._get_storage_tail_from_sorted_pathnames(after_timestamp)
+        self._get_sorted_files()
+        return self._get_storage_tail_from_sorted_files(after_timestamp)
 
-    def _get_sorted_pathnames(self):
-        pathnames = glob(self.path)
-        self._sorted_pathnames = sorted(pathnames, key=self._extract_a_date_from_file)
+    def _get_sorted_files(self):
+        files = [self._get_file(pathname) for pathname in glob(self.path)]
+        self._sorted_files = sorted(
+            files, key=lambda x: x["last_date"] or dt.datetime(1700, 1, 1, 0, 0)
+        )
 
-    def _extract_a_date_from_file(self, pathname):
+    def _get_file(self, pathname):
+        return {
+            "pathname": pathname,
+            "first_date": self._extract_first_date_from_file(pathname),
+            "last_date": self._extract_last_date_from_file(pathname),
+        }
+
+    def _extract_first_date_from_file(self, pathname):
+        with open(pathname, encoding=self.encoding, errors="replace") as f:
+            for line in f:
+                if self._must_ignore_line(line):
+                    continue
+                timestamp = self._extract_timestamp(line).replace(second=0)
+                timestamp = self._fix_dst(timestamp)
+                return timestamp
+        return None
+
+    def _extract_last_date_from_file(self, pathname):
         with ropen(pathname, encoding=self.encoding, errors="replace") as xr:
             for line in xr:
                 if self._must_ignore_line(line):
@@ -279,17 +298,51 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 timestamp = self._extract_timestamp(line).replace(second=0)
                 timestamp = self._fix_dst(timestamp)
                 return timestamp
+        return None
 
-    def _get_storage_tail_from_sorted_pathnames(self, after_timestamp):
+    def _get_storage_tail_from_sorted_files(self, after_timestamp):
         result = []
-        for pathname in reversed(self._sorted_pathnames):
+        for file in reversed(self._sorted_files):
             partial_result, reached_after_timestamp = self._get_storage_tail_from_file(
-                pathname, after_timestamp
+                file["pathname"], after_timestamp
             )
             result = partial_result + result
             if reached_after_timestamp:
                 break
         return result
+
+    def _raise_monotonic_exception(self, index):
+        self._check_file_order()
+        super()._raise_monotonic_exception(index)
+
+    def _check_file_order(self):
+        previous_file = None
+        for file in self._sorted_files:
+            self._check_file_dates(file)
+            if previous_file:
+                self._check_adjacent_file_dates(previous_file, file)
+            previous_file = file
+
+    def _check_file_dates(self, file):
+        if file["first_date"] is None and file["last_date"] is None:
+            return
+        assert file["first_date"] is not None and file["last_date"] is not None
+        if file["first_date"] <= file["last_date"]:
+            return
+        raise ValueError(
+            "The order of timestamps in file {} is mixed up.".format(file["pathname"])
+        )
+
+    def _check_adjacent_file_dates(self, file1, file2):
+        if file1["last_date"] is None or file2["first_date"] is None:
+            return
+        if file1["last_date"] < file2["first_date"]:
+            return
+        raise ValueError(
+            "The timestamps in files {} and {} overlap.".format(
+                file1["pathname"], file2["pathname"]
+            )
+        )
 
 
 class MeteologgerStorage_deltacom(TextFileMeteologgerStorage):
