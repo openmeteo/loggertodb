@@ -2,6 +2,13 @@
 History
 =======
 
+0.2.1 (2019-07-17)
+==================
+
+- Fixed a crash when a file was empty in multi-file simple format.
+- Improved error messages in multi-file simple format when the
+  timestamps were badly ordered in a file or overlapping between files.
+
 0.2.0 (2019-07-16)
 ==================
 
