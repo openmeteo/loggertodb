@@ -3,7 +3,11 @@ import textwrap
 
 from pyfakefs.fake_filesystem_unittest import TestCase
 
-from loggertodb.meteologgerstorage import MultiTextFileMeteologgerStorage
+from loggertodb.exceptions import MeteologgerStorageReadError
+from loggertodb.meteologgerstorage import (
+    MeteologgerStorage_simple,
+    MultiTextFileMeteologgerStorage,
+)
 
 
 class DummyMultiTextFileMeteologgerStorage(MultiTextFileMeteologgerStorage):
@@ -287,3 +291,38 @@ class FilesWithOverlap(TestCase):
         msg = "The timestamps in files /foo/bar1 and /foo/bar2 overlap."
         with self.assertRaisesRegex(ValueError, msg):
             self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))
+
+
+class FileWithBadLine(TestCase):
+    def setUp(self):
+        self.setUpPyfakefs()
+        self.meteologger_storage = self._get_meteologger_storage()
+        self._create_file()
+
+    def _get_meteologger_storage(self):
+        parms = {
+            "station_id": 1334,
+            "path": "/foo/bar?",
+            "storage_format": "simple",
+            "fields": "5, 6",
+            "nullstr": "NULL",
+            "ignore_lines": "Date",
+            "nfields_to_ignore": 1,
+        }
+        return MeteologgerStorage_simple(parms)
+
+    def _create_file(self):
+        self.fs.create_file(
+            "/foo/bar1",
+            contents=(
+                b"id,Date,value1,value2\n"
+                b"Invalid line\n"
+                b"#501,2018-02-28 17:20,42.1,24.2\n"
+                b"#502,2019-02-28 17:30,42.2,24.3\n"
+            ),
+        )
+
+    def test_raises_error(self):
+        msg = '/foo/bar1: "Invalid line": Malformed line'
+        with self.assertRaisesRegex(MeteologgerStorageReadError, msg):
+            self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0))

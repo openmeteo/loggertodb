@@ -155,7 +155,8 @@ class MeteologgerStorage(ABC):
         return result
 
     def _raise_error(self, line, msg):
-        errmessage = '{}: "{}": {}'.format(self.path, line, msg)
+        filename = self.filename if hasattr(self, "filename") else self.path
+        errmessage = '{}: "{}": {}'.format(filename, line, msg)
         self.logger.error("Error while parsing, message: " + errmessage)
         raise MeteologgerStorageReadError(errmessage)
 
@@ -220,10 +221,10 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
     def _get_storage_tail(self, after_timestamp):
         return self._get_storage_tail_from_file(self.path, after_timestamp)[0]
 
-    def _get_storage_tail_from_file(self, pathname, after_timestamp):
+    def _get_storage_tail_from_file(self, filename, after_timestamp):
         result = []
         reached_after_timestamp = False
-        with ropen(pathname, encoding=self.encoding, errors="replace") as xr:
+        with ropen(filename, encoding=self.encoding, errors="replace") as xr:
             prev_timestamp = ""
             for line in xr:
                 if self._must_ignore_line(line):
@@ -268,20 +269,23 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
         return self._get_storage_tail_from_sorted_files(after_timestamp)
 
     def _get_sorted_files(self):
-        files = [self._get_file(pathname) for pathname in glob(self.path)]
+        files = []
+        for filename in glob(self.path):
+            self.filename = filename
+            files.append(self._get_file())
         self._sorted_files = sorted(
             files, key=lambda x: x["last_date"] or dt.datetime(1700, 1, 1, 0, 0)
         )
 
-    def _get_file(self, pathname):
+    def _get_file(self):
         return {
-            "pathname": pathname,
-            "first_date": self._extract_first_date_from_file(pathname),
-            "last_date": self._extract_last_date_from_file(pathname),
+            "filename": self.filename,
+            "first_date": self._extract_first_date_from_file(self.filename),
+            "last_date": self._extract_last_date_from_file(self.filename),
         }
 
-    def _extract_first_date_from_file(self, pathname):
-        with open(pathname, encoding=self.encoding, errors="replace") as f:
+    def _extract_first_date_from_file(self, filename):
+        with open(filename, encoding=self.encoding, errors="replace") as f:
             for line in f:
                 if self._must_ignore_line(line):
                     continue
@@ -290,8 +294,8 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 return timestamp
         return None
 
-    def _extract_last_date_from_file(self, pathname):
-        with ropen(pathname, encoding=self.encoding, errors="replace") as xr:
+    def _extract_last_date_from_file(self, filename):
+        with ropen(filename, encoding=self.encoding, errors="replace") as xr:
             for line in xr:
                 if self._must_ignore_line(line):
                     continue
@@ -304,7 +308,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
         result = []
         for file in reversed(self._sorted_files):
             partial_result, reached_after_timestamp = self._get_storage_tail_from_file(
-                file["pathname"], after_timestamp
+                file["filename"], after_timestamp
             )
             result = partial_result + result
             if reached_after_timestamp:
@@ -330,7 +334,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
         if file["first_date"] <= file["last_date"]:
             return
         raise ValueError(
-            "The order of timestamps in file {} is mixed up.".format(file["pathname"])
+            "The order of timestamps in file {} is mixed up.".format(file["filename"])
         )
 
     def _check_adjacent_file_dates(self, file1, file2):
@@ -340,7 +344,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
             return
         raise ValueError(
             "The timestamps in files {} and {} overlap.".format(
-                file1["pathname"], file2["pathname"]
+                file1["filename"], file2["filename"]
             )
         )
 
@@ -450,6 +454,8 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
             self._raise_error(
                 line.strip(), "invalid date '{0}': {1}".format(datestr, str(e))
             )
+        except IndexError:
+            self._raise_error(line.strip(), "Malformed line")
 
     def _get_item_from_line(self, line, seq):
         index = self.nfields_to_ignore + seq + (1 if self._separate_time else 0)
