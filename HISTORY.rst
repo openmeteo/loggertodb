@@ -2,6 +2,12 @@
 History
 =======
 
+0.2.2 (2019-08-20)
+==================
+
+- Improved error message in multi-file simple format when
+  nfields_to_ignore was 1 or more and a line did not have enough fields.
+
 0.2.1 (2019-07-17)
 ==================
 
