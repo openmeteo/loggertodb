@@ -2,6 +2,11 @@
 History
 =======
 
+1.0.0 (2019-10-29)
+==================
+
+- Improved handling of switch from DST to winter time.
+
 0.2.2 (2019-08-20)
 ==================
 
