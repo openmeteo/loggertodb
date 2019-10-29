@@ -482,14 +482,15 @@ may find `Wikipedia's copy`_ handy.)
 .. _olson database: http://www.iana.org/time-zones
 .. _wikipedia's copy: http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
-Currently ``loggertodb`` performs a very limited kind of correction; it
-assumes that the time change occurs exactly when it is supposed to
-occur, not a few hours earlier or later. For the switch towards DST,
-things are simple. For the switch from DST to winter time, things are
-more complicated, because there's an hour that appears twice;
-``loggertodb`` assumes that any records in the ambiguous hour refer to
-after the switch, unless according to the computer's clock the switch
-hasn't occurred yet.
+``loggertodb`` assumes that the time change occurs exactly when it is
+supposed to occur, not a few hours earlier or later. For the switch
+towards DST, things are simple. For the switch from DST to winter time,
+things are more complicated, because there's an hour that appears twice.
+If the ambiguous hour occurs twice, ``loggertodb`` will usually do the
+correct thing; it will consider that the second occurence is after the
+switch and the first is before the switch. If according to the
+computer's clock the switch hasn't occurred yet, any references to the
+ambiguous hour are considered to have occurred before the switch.
 
 The ``timezone`` parameter is used only in order to know when the DST
 switches occur. The timestamp, after removing any DST, are entered as

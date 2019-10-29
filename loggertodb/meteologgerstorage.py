@@ -19,6 +19,7 @@ pyodbc = None
 
 class MeteologgerStorage(ABC):
     def __init__(self, parameters, logger=None):
+        self._reset_ambiguous_hour_data()
         self.__check_parameters(parameters)
         self.station_id = int(parameters["station_id"])
         self.path = parameters["path"]
@@ -47,6 +48,7 @@ class MeteologgerStorage(ABC):
         pass
 
     def get_recent_data(self, ts_id, after_timestamp):
+        self._reset_ambiguous_hour_data()
         cached_after_timestamp = getattr(
             self, "_cached_after_timestamp", dt.datetime(9999, 12, 31)
         )
@@ -141,18 +143,52 @@ class MeteologgerStorage(ABC):
     def _fix_dst(self, adatetime):
         """Remove any DST from a date.
 
-           Determine if a date contains DST. If it does, remove the
-           extra hour. Returns the fixed date.
+        Determine if a date contains DST. If it does, remove the extra hour. Returns the
+        fixed date.
+
+        If adatetime is an ambiguous hour, then we try to deduce whether it is in dst or
+        not. If the switch hasn't occurred yet, we conclude it's in dst. If the switch
+        has occurred, we conclude it's not in dst, unless we've already seen that date
+        (i.e. already dealt with it in a previous call—remember we process files
+        backwards, from later to earlier dates); in that case, we conclude it's in dst.
         """
-        result = adatetime
-        if self.timezone.zone != "UTC":
-            now = dt.datetime.now(self.timezone)
-            now_naive = now.replace(tzinfo=None)
-            is_dst = bool(now.dst()) and (
-                abs(adatetime - now_naive) < dt.timedelta(hours=24)
-            )
-            result -= self.timezone.dst(adatetime, is_dst=is_dst)
-        return result
+        if not hasattr(self.timezone, "_utc_transition_times"):
+            return adatetime  # Timezone does not switch to DST
+        is_dst = self._auto_detect_is_dst(adatetime)
+        return adatetime - self.timezone.dst(adatetime, is_dst=is_dst)
+
+    def _reset_ambiguous_hour_data(self):
+        self._dates_already_seen = set()
+        self._we_are_in_the_second_occurrence_of_the_ambigous_hour = False
+
+    def _auto_detect_is_dst(self, adatetime):
+        if self._datetime_is_ambiguous(adatetime):
+            return self._determine_is_dst_for_ambiguous_hour(adatetime)
+        else:
+            self._reset_ambiguous_hour_data()
+            return None
+
+    def _datetime_is_ambiguous(self, adatetime):
+        dst = self.timezone.dst
+        return dst(adatetime, is_dst=True) != dst(adatetime, is_dst=False)
+
+    def _determine_is_dst_for_ambiguous_hour(self, adatetime):
+        if self._switch_has_not_occurred(adatetime):
+            return True
+        if self._we_are_in_the_second_occurrence_of_the_ambigous_hour:
+            return True
+        if adatetime in self._dates_already_seen:
+            self._we_are_in_the_second_occurrence_of_the_ambigous_hour = True
+            return True
+        self._dates_already_seen.add(adatetime)
+        return False
+
+    def _switch_has_not_occurred(self, adatetime):
+        now = dt.datetime.now(self.timezone)
+        now_naive = now.replace(tzinfo=None)
+        if abs(adatetime - now_naive) > dt.timedelta(hours=24):
+            return False
+        return bool(now.dst())
 
     def _raise_error(self, line, msg):
         filename = self.filename if hasattr(self, "filename") else self.path

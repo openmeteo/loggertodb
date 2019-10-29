@@ -1,7 +1,10 @@
 import datetime as dt
 import textwrap
+from collections import OrderedDict
 from unittest import TestCase
 
+import numpy as np
+import pandas as pd
 from pyfakefs.fake_filesystem_unittest import Patcher
 
 from loggertodb import ConfigurationError
@@ -133,6 +136,86 @@ class GetStorageTailTestCase(TestCase):
                 },
             ],
         )
+
+
+class GetRecentDataWithAmbiguousHourTestCase(TestCase):
+    def setUp(self):
+        meteologger_storage = DummyTextFileMeteologgerStorage(
+            {
+                "station_id": 1334,
+                "path": "/foo/bar",
+                "storage_format": "dummy",
+                "fields": "5, 6",
+                "nullstr": "NULL",
+                "timezone": "Europe/Athens",
+            }
+        )
+        with Patcher() as patcher:
+            patcher.fs.create_file(
+                "/foo/bar",
+                contents=textwrap.dedent(
+                    """\
+                    2018-10-28 02:50,42.1,24.2
+                    2018-10-28 03:00,42.2,24.3
+                    2018-10-28 03:10,42.3,24.4
+                    2018-10-28 03:20,42.4,24.5
+                    2018-10-28 03:30,42.5,24.6
+                    2018-10-28 03:40,42.6,24.7
+                    2018-10-28 03:50,42.7,24.8
+                    2018-10-28 03:00,42.8,24.9
+                    2018-10-28 03:10,42.9,25.0
+                    2018-10-28 03:20,43.0,25.1
+                    2018-10-28 03:30,43.1,25.2
+                    2018-10-28 03:40,43.2,25.3
+                    2018-10-28 03:50,43.3,25.4
+                    2018-10-28 04:00,43.4,25.5
+                    2018-10-28 04:10,43.5,25.6
+                    2019-10-27 02:50,42.1,24.2
+                    2019-10-27 03:00,42.2,24.3
+                    2019-10-27 03:10,42.3,24.4
+                    2019-10-27 03:20,42.4,24.5
+                    2019-10-27 03:30,42.5,24.6
+                    2019-10-27 03:40,42.6,24.7
+                    2019-10-27 03:50,42.7,24.8
+                    2019-10-27 03:00,42.8,24.9
+                    2019-10-27 03:10,42.9,25.0
+                    2019-10-27 03:20,43.0,25.1
+                    2019-10-27 03:30,43.1,25.2
+                    2019-10-27 03:40,43.2,25.3
+                    2019-10-27 03:50,43.3,25.4
+                    2019-10-27 04:00,43.4,25.5
+                    2019-10-27 04:10,43.5,25.6
+                    """
+                ),
+            )
+            self.result = meteologger_storage.get_recent_data(
+                5, dt.datetime(2018, 10, 27, 1, 0)
+            )
+
+    def test_result(self):
+        v = np.arange(421, 436) / 10.0
+        expected_values = np.concatenate((v, v))
+        expected_flags = [""] * 30
+        expected_dates = np.concatenate(
+            (
+                pd.date_range(
+                    start=dt.datetime(2018, 10, 28, 1, 50),
+                    end=dt.datetime(2018, 10, 28, 4, 10),
+                    freq="10min",
+                ),
+                pd.date_range(
+                    start=dt.datetime(2019, 10, 27, 1, 50),
+                    end=dt.datetime(2019, 10, 27, 4, 10),
+                    freq="10min",
+                ),
+            )
+        )
+        expected_result = pd.DataFrame(
+            data=OrderedDict([("value", expected_values), ("flags", expected_flags)]),
+            index=expected_dates,
+            dtype=object,
+        )
+        pd.testing.assert_frame_equal(self.result, expected_result)
 
 
 class IgnoreLinesTestCase(TestCase):
