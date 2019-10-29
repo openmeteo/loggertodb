@@ -259,14 +259,8 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
 
 class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
     def _get_storage_tail(self, after_timestamp):
-        if any(c in "*?[]" for c in self.path):
-            return self._get_storage_tail_from_multiple_files(after_timestamp)
-        else:
-            return super()._get_storage_tail(after_timestamp)
-
-    def _get_storage_tail_from_multiple_files(self, after_timestamp):
         self._get_sorted_files()
-        return self._get_storage_tail_from_sorted_files(after_timestamp)
+        return self._get_storage_tail_from_multiple_files(after_timestamp)
 
     def _get_sorted_files(self):
         files = []
@@ -304,7 +298,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 return timestamp
         return None
 
-    def _get_storage_tail_from_sorted_files(self, after_timestamp):
+    def _get_storage_tail_from_multiple_files(self, after_timestamp):
         result = []
         for file in reversed(self._sorted_files):
             partial_result, reached_after_timestamp = self._get_storage_tail_from_file(
