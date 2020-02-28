@@ -16,9 +16,9 @@ extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode"]
 templates_path = ["_templates"]
 source_suffix = ".rst"
 master_doc = "index"
-project = u"loggertodb"
-copyright = u"2018, Antonis Christofides"
-author = u"Antonis Christofides"
+project = "loggertodb"
+copyright = "2004-2020 various entities"
+author = "Antonis Christofides"
 version = get_version()
 release = version
 language = None
@@ -33,17 +33,17 @@ latex_documents = [
     (
         master_doc,
         "loggertodb.tex",
-        u"loggertodb Documentation",
-        u"Antonis Christofides",
+        "loggertodb Documentation",
+        "Antonis Christofides",
         "manual",
     )
 ]
-man_pages = [(master_doc, "loggertodb", u"loggertodb Documentation", [author], 1)]
+man_pages = [(master_doc, "loggertodb", "loggertodb Documentation", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
         "loggertodb",
-        u"loggertodb Documentation",
+        "loggertodb Documentation",
         author,
         "loggertodb",
         "One line description of project.",
