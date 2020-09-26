@@ -7,6 +7,7 @@ Loggertodb documentation
 
    installation
    usage
+   release-notes
    development
    license
 
