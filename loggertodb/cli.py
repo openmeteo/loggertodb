@@ -39,8 +39,7 @@ def main(configfile):
 
         # Read the [General] section
         base_url = config.get("General", "base_url")
-        username = config.get("General", "username")
-        password = config.get("General", "password")
+        auth_token = config.get("General", "auth_token")
         logfile = config.get("General", "logfile", fallback="")
         loglevel = config.get("General", "loglevel", fallback="warning")
         log_levels = ("ERROR", "WARNING", "INFO", "DEBUG")
@@ -62,8 +61,7 @@ def main(configfile):
         logger.info("Starting loggertodb, " + datetime.today().isoformat())
 
         # Connect to Enhydris
-        client = EnhydrisApiClient(base_url)
-        client.login(username, password)
+        client = EnhydrisApiClient(base_url, auth_token)
 
         # Read each section and do the work for it
         for section_name in config.sections():

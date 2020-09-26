@@ -2,6 +2,18 @@
 Release notes
 =============
 
+Version 2 (not released yet)
+============================
+
+Token authentication
+--------------------
+
+``loggertodb`` used to use a username and password to logon to Enhydris.
+Now it uses a token instead. Accordingly, the ``username`` and
+``password`` configuration file parameters have been abolished and
+``auth_token`` has been introduced. See the :ref:`documentation on
+authentication <authentication>` for more detailed instructions.
+
 History up to Version 1
 =======================
 

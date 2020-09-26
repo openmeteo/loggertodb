@@ -28,9 +28,8 @@ copy and paste them from below):
 .. code-block:: ini
 
     [General]
-    base_url = http://openmeteo.org/
-    username = user1
-    password = topsecret
+    base_url = https://openmeteo.org/
+    auth_token = 123456789abcdef0123456789abcdef012345678
     loglevel = INFO
 
 Then, open a command prompt and give it this command:
@@ -51,6 +50,16 @@ similar to "No stations have been specified". This means that, apart
 from the "General" section you have to add more sections to the
 configuration file.
 
+.. _authentication:
+
+Authentication
+--------------
+
+``loggertodb`` needs to logon to Enhydris, and for this it needs an
+authentication token to be specified as the value of the ``auth_token``
+parameter. You can get a token at the ``/api/auth/login/`` URL of
+Enhydris, such as https://openmeteo.org/api/auth/login/.
+
 Configuration file examples
 ---------------------------
 
@@ -66,8 +75,7 @@ will not be uploaded (symbolized with the 0)::
     loglevel = WARNING
     logfile = /var/log/loggertodb/itiameteo.log
     base_url = https://openmeteo.org/
-    username = aptiko
-    password = topsecret
+    auth_token = 123456789abcdef0123456789abcdef012345678
 
     [NTUA]
     station_id = 1334
@@ -88,8 +96,7 @@ adjustments (see `Daylight saving time`_)::
     loglevel = WARNING
     logfile = /var/log/loggertodb/defkalion.log
     base_url = https://openmeteo.org/
-    username = aptiko
-    password = topsecret
+    auth_token = 123456789abcdef0123456789abcdef012345678
 
     [PRASINOS]
     station_id = 1345
@@ -118,8 +125,7 @@ line (after the date and time) is not uploaded::
     loglevel = INFO
     logfile = C:\a2a\loggertodb-kostilata.log
     base_url = https://openmeteo.org/
-    username = aptiko
-    password = topsecret
+    auth_token = 123456789abcdef0123456789abcdef012345678
 
     [ANO_KOSTILATA]
     station_id = 1387
@@ -151,8 +157,7 @@ below about :ref:`WDAT5 units <wdat5_units>` and :ref:`the WDAT5 format
     loglevel = INFO
     logfile = C:\WeatherLink\komboti\loggertodb.log
     base_url = https://openmeteo.org/
-    username = aptiko
-    password = topsecret
+    auth_token = 123456789abcdef0123456789abcdef012345678
 
     [KOMBOTI]
     station_id = 1389
@@ -200,10 +205,10 @@ base_url
    The base url of the Enhydris installation to connect to, such as
    ``https://openmeteo.org/``.
 
-username, password
-   The user name and password with which ``loggertodb`` will connect.
-   Obviously the user must have write permissions for all time series that will
-   be uploaded.
+auth_token
+   The token ``loggertodb`` will use to authenticate with Enhydris.
+   Obviously the user to whom the token corresponds must have write
+   permissions for all time series that will be uploaded.
 
 File parameters
 ---------------

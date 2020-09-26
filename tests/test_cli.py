@@ -32,8 +32,7 @@ class MissingBaseUrlTestCase(TestCase):
                     textwrap.dedent(
                         """\
                         [General]
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
                         """
                     )
                 )
@@ -56,8 +55,7 @@ class NonExistentLogLevelTestCase(TestCase):
                         """\
                         [General]
                         base_url = https://example.com
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
                         loglevel = NONEXISTENT_LOG_LEVEL
                         """
                     )
@@ -83,8 +81,7 @@ class ConfigurationWithNoMeteologgersTestCase(TestCase):
                         """\
                         [General]
                         base_url = https://example.com
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
                         """
                     )
                 )
@@ -108,8 +105,7 @@ class ConfigurationWithUnsupportedFormatTestCase(TestCase):
                         """\
                         [General]
                         base_url = https://example.com
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
 
                         [My station]
                         storage_format = unsupported
@@ -141,8 +137,7 @@ class CorrectConfigurationTestCase(TestCase):
                         """\
                         [General]
                         base_url = https://example.com
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
 
                         [My station]
                         storage_format = simple
@@ -158,11 +153,8 @@ class CorrectConfigurationTestCase(TestCase):
         self.assertEqual(self.result.exit_code, 0)
 
     def test_has_used_base_url(self):
-        self.mock_client.assert_called_once_with("https://example.com")
-
-    def test_has_logged_on(self):
-        self.mock_client.return_value.login.assert_called_once_with(
-            "a_user", "a_password"
+        self.mock_client.assert_called_once_with(
+            "https://example.com", "123456789abcdef0123456789abcdef012345678"
         )
 
     def test_has_updated_database(self):
@@ -187,8 +179,7 @@ class CorrectConfigurationWithLogFileTestCase(TestCase):
                         """\
                         [General]
                         base_url = https://example.com
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
                         logfile = deleteme
 
                         [My station]
@@ -235,8 +226,7 @@ class UpdateDatabaseTestCase(TestCase):
                         """\
                         [General]
                         base_url = https://example.com
-                        username = a_user
-                        password = a_password
+                        auth_token = 123456789abcdef0123456789abcdef012345678
 
                         [My station]
                         storage_format = simple
