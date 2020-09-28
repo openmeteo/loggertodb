@@ -5,6 +5,9 @@ Release notes
 Version 2 (not released yet)
 ============================
 
+``loggertodb`` version 2 is not compatible with Enhydris versions
+earlier than 3.  Use ``loggertodb`` version 1 for Enhydris version 2.
+
 Token authentication
 --------------------
 
@@ -13,6 +16,17 @@ Now it uses a token instead. Accordingly, the ``username`` and
 ``password`` configuration file parameters have been abolished and
 ``auth_token`` has been introduced. See the :ref:`documentation on
 authentication <authentication>` for more detailed instructions.
+
+Time series groups
+------------------
+
+Enhydris 3 contains the notion of a time series group—a group of related
+time series for the same variable, e.g. the raw, checked and aggregated
+versions of a time series. Accordingly, ``loggertodb`` has been changed
+so that the ``fields`` parameter specifies time series group ids rather
+than time series ids. ``loggertodb`` will always upload data in the
+"raw" time series of the time series group; if such a time series does
+not exist, it is automatically created.
 
 History up to Version 1
 =======================

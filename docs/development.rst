@@ -57,14 +57,15 @@ specialized, each to a specific kind of meteologger storage.
    .. attribute:: fields 
 
       A comma-separated list of integers representing the ids of the
-      time series to which the fields correspond; a zero indicates that
-      the field is to be ignored. The first number corresponds to the
-      first field after the date (and other fixed fields, such as the
-      possible subset identifier; which are those fields depends on the
-      file format, that is, the specific :class:`MeteologgerStorage`
-      subclass) and should be the id of the corresponding time series,
-      or zero if the field is dummy; the second number corresponds to
-      the second field after the fixed fields, and so on.
+      time series groups to which the fields correspond; a zero
+      indicates that the field is to be ignored. The first number
+      corresponds to the first field after the date (and other fixed
+      fields, such as the possible subset identifier; which are those
+      fields depends on the file format, that is, the specific
+      :class:`MeteologgerStorage` subclass) and should be the id of the
+      corresponding time series group, or zero if the field is dummy;
+      the second number corresponds to the second field after the fixed
+      fields, and so on.
      
    .. attribute:: nfields_to_ignore
 
@@ -110,17 +111,17 @@ specialized, each to a specific kind of meteologger storage.
    :class:`MeteologgerStorage` also has the following methods and
    properties:
 
-   .. attribute:: MeteologgerStorage.timeseries_ids
+   .. attribute:: MeteologgerStorage.timeseries_group_ids
 
-      A list of time series ids. This is extracted from :attr:`fields`
-      (zeros are ignored).
+      A list of time series group ids. This is extracted from
+      :attr:`fields` (zeros are ignored).
    
-   .. method:: MeteologgerStorage.get_recent_data(ts_id, after_timestamp)
+   .. method:: MeteologgerStorage.get_recent_data(ts_group_id, ts_id, after_timestamp)
 
-      Read the storage and extract the last part of time series that
-      corresponds to *ts_id*; specifically, provide the part that is
-      more recent than *after_timestamp*. Returns that part of the time
-      series as a pandas dataframe.
+      Read the storage and extract the last part of the time series that
+      is specified by *ts_group_id* and *ts_id*; specifically, provide
+      the part that is more recent than *after_timestamp*. Returns that
+      part of the time series as a pandas dataframe.
 
       :meth:`get_recent_data()` will actually extract the last part of
       all time series from storage, but only return the data for the

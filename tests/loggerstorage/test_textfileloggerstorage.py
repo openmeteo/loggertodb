@@ -56,7 +56,7 @@ class CheckParametersTestCase(TestCase):
 
 
 class TimeseriesIdsTestCase(TestCase):
-    def test_timeseries_ids(self):
+    def test_timeseries_group_ids(self):
         meteologger_storage = DummyTextFileMeteologgerStorage(
             {
                 "station_id": 1334,
@@ -66,7 +66,7 @@ class TimeseriesIdsTestCase(TestCase):
                 "nullstr": "NULL",
             }
         )
-        self.assertEqual(meteologger_storage.timeseries_ids, set((5, 6)))
+        self.assertEqual(meteologger_storage.timeseries_group_ids, set((5, 6)))
 
 
 class ExtractValueAndFlagsTestCase(TestCase):

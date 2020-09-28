@@ -68,8 +68,8 @@ Configuration file examples
 The following instructs ``loggertodb`` to use the single data file
 :file:`zeno.data` and upload its data to ``openmeteo.org``; the first
 field of each line (after the date and time) will be uploaded to time
-series 232, the second to 233, and so on. The last field of each line
-will not be uploaded (symbolized with the 0)::
+series group 232, the second to 233, and so on. The last field of each
+line will not be uploaded (symbolized with the 0)::
 
     [General]
     loglevel = WARNING
@@ -224,14 +224,20 @@ storage_format
 
 fields
    (Not for the wdat5 format.) A series of comma-separated integers
-   representing the ids of the time series to which the data file
-   fields correspond; a zero indicates that the field is to be
-   ignored. The first number corresponds to the first field after the
-   date (and possibly other fixed fields depending on data file
+   representing the ids of the time series groups to which the data file
+   fields correspond (time series groups are what Enhydris lists as
+   "Data" in the page for a station). A zero indicates that the field is
+   to be ignored. The first number corresponds to the first field after
+   the date (and possibly other fixed fields depending on data file
    format, such as the subset identifier) and should be the id of the
-   corresponding time series, or zero if the field is dummy; the
-   second number corresponds to the second field after the fixed
-   fields, and so on.
+   corresponding time series group, or zero if the field is dummy; the
+   second number corresponds to the second field after the fixed fields,
+   and so on.
+
+   Each time series group contains variations of the same time series,
+   such as raw, checked and aggregated. ``loggertodb`` uploads the data
+   to the "raw" time series of the group. If such a time series does not
+   exist, it is created.
 
 nfields_to_ignore
    This is used only in the ``simple`` format; it's an integer that
@@ -379,7 +385,7 @@ wdat5
    the directory name where your ``wlk`` files are stored (one file per
    month).
 
-   You can specify time series ids like this::
+   You can specify time serie group ids like this::
 
        outsideTemp = 1256
        hiOutsideTemp = 1257

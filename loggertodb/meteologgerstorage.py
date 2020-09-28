@@ -44,10 +44,10 @@ class MeteologgerStorage(ABC):
 
     @property
     @abstractmethod
-    def timeseries_ids(self):
+    def timeseries_group_ids(self):
         pass
 
-    def get_recent_data(self, ts_id, after_timestamp):
+    def get_recent_data(self, ts_group_id, after_timestamp):
         self._reset_ambiguous_hour_data()
         cached_after_timestamp = getattr(
             self, "_cached_after_timestamp", dt.datetime(9999, 12, 31)
@@ -55,8 +55,8 @@ class MeteologgerStorage(ABC):
         if after_timestamp < cached_after_timestamp:
             self._extract_data(after_timestamp=after_timestamp)
         from_timestamp = after_timestamp + dt.timedelta(seconds=1)
-        self._check_monotonic(self._cached_data[ts_id].index)
-        return self._cached_data[ts_id].loc[from_timestamp:]
+        self._check_monotonic(self._cached_data[ts_group_id].index)
+        return self._cached_data[ts_group_id].loc[from_timestamp:]
 
     def _check_monotonic(self, index):
         if index.is_monotonic:
@@ -102,13 +102,13 @@ class MeteologgerStorage(ABC):
         index = np.empty(len(storage_tail), dtype="datetime64[s]")
         data = {
             ts_id: np.empty((len(storage_tail), 2), dtype=object)
-            for ts_id in self.timeseries_ids
+            for ts_id in self.timeseries_group_ids
         }
 
         # Iterate through the storage tail and fill in the time series
         try:
             for i, record in enumerate(storage_tail):
-                for ts_id in self.timeseries_ids:
+                for ts_id in self.timeseries_group_ids:
                     v, f = self._extract_value_and_flags(ts_id, record)
                     index[i] = np.datetime64(record["timestamp"])
                     data[ts_id][i, 0] = v
@@ -119,10 +119,10 @@ class MeteologgerStorage(ABC):
 
         # Replace self._cached_data and self._after_timestamp, if any
         self._cached_data = {
-            ts_id: pd.DataFrame(
-                columns=["value", "flags"], index=index, data=data[ts_id]
+            tsg_id: pd.DataFrame(
+                columns=["value", "flags"], index=index, data=data[tsg_id]
             )
-            for ts_id in self.timeseries_ids
+            for tsg_id in self.timeseries_group_ids
         }
         self._cached_after_timestamp = after_timestamp
 
@@ -231,7 +231,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         }
 
     @property
-    def timeseries_ids(self):
+    def timeseries_group_ids(self):
         return set(self.fields) - {0}
 
     def _subset_identifiers_match(self, line):
@@ -609,7 +609,7 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
         )
 
     @property
-    def timeseries_ids(self):
+    def timeseries_group_ids(self):
         return {self.variables[lab] for lab in self.variables if self.variables[lab]}
 
     def __init__(self, parameters, logger=None):

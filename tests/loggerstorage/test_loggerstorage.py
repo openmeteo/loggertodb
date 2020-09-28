@@ -21,7 +21,7 @@ class DummyMeteologgerStorage(MeteologgerStorage):
         return (ts_id, record["line"])
 
     @property
-    def timeseries_ids(self):
+    def timeseries_group_ids(self):
         return (15, 16)
 
 

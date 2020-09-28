@@ -20,7 +20,7 @@ class ConfigurationTestCase(TestCase):
             }
         )
 
-    def test_timeseries_ids(self):
+    def test_timeseries_group_ids(self):
         meteologger_storage = MeteologgerStorage_wdat5(
             {
                 "station_id": 1334,
@@ -31,7 +31,7 @@ class ConfigurationTestCase(TestCase):
                 "rain": 1652,
             }
         )
-        self.assertEqual(meteologger_storage.timeseries_ids, {1256, 1257, 1652})
+        self.assertEqual(meteologger_storage.timeseries_group_ids, {1256, 1257, 1652})
 
     def test_valid_temperature_unit(self):
         MeteologgerStorage_wdat5(
