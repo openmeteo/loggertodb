@@ -123,7 +123,7 @@ class ConfigurationWithUnsupportedFormatTestCase(TestCase):
 
 class CorrectConfigurationTestCase(TestCase):
     @patch("loggertodb.cli.EnhydrisApiClient")
-    @patch("loggertodb.cli.update_database")
+    @patch("loggertodb.cli.LoggerToDb._update_database")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
     def setUp(self, mock_meteologgerstorage, mock_update_db, mock_client):
         self.mock_meteologgerstorage = mock_meteologgerstorage
@@ -159,13 +159,13 @@ class CorrectConfigurationTestCase(TestCase):
 
     def test_has_updated_database(self):
         self.mock_update_db.assert_called_once_with(
-            self.mock_client.return_value, self.mock_meteologgerstorage.return_value
+            self.mock_meteologgerstorage.return_value
         )
 
 
 class CorrectConfigurationWithLogFileTestCase(TestCase):
     @patch("loggertodb.cli.EnhydrisApiClient")
-    @patch("loggertodb.cli.update_database")
+    @patch("loggertodb.cli.LoggerToDb._update_database")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
     def test_creates_log_file(self, *args):
         self.mock_meteologgerstorage = args[0]
