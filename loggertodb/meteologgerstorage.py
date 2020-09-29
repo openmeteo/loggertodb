@@ -697,8 +697,7 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
         return result
 
     def __decode_wdat_record(self, record):
-        """Decode bytes into a dictionary.
-        """
+        """Decode bytes into a dictionary."""
         result = {}
 
         # Read raw values

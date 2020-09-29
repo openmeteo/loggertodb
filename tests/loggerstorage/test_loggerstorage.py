@@ -26,8 +26,7 @@ class DummyMeteologgerStorage(MeteologgerStorage):
 
 
 class DummyWrongOrderMeteologgerStorage(DummyMeteologgerStorage):
-    """A file with a storage tail that contains records in the wrong order.
-    """
+    """A file with a storage tail that contains records in the wrong order."""
 
     def _get_storage_tail(self, after_timestamp):
         result = super()._get_storage_tail(after_timestamp)
