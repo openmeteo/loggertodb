@@ -1,8 +1,7 @@
-import datetime as dt
 import os
 import textwrap
 from unittest import TestCase
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 from click.testing import CliRunner
 
@@ -95,8 +94,8 @@ class ConfigurationWithNoMeteologgersTestCase(TestCase):
 
 
 class ConfigurationWithUnsupportedFormatTestCase(TestCase):
-    @patch("loggertodb.cli.EnhydrisApiClient")
-    def setUp(self, mock_client):
+    @patch("loggertodb.cli.Enhydris")
+    def setUp(self, mock_enhydris):
         runner = CliRunner(mix_stderr=False)
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
@@ -122,13 +121,11 @@ class ConfigurationWithUnsupportedFormatTestCase(TestCase):
 
 
 class CorrectConfigurationTestCase(TestCase):
-    @patch("loggertodb.cli.EnhydrisApiClient")
-    @patch("loggertodb.cli.LoggerToDb._update_database")
+    @patch("loggertodb.cli.Enhydris")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
-    def setUp(self, mock_meteologgerstorage, mock_update_db, mock_client):
+    def setUp(self, mock_meteologgerstorage, mock_enhydris):
         self.mock_meteologgerstorage = mock_meteologgerstorage
-        self.mock_update_db = mock_update_db
-        self.mock_client = mock_client
+        self.mock_enhydris = mock_enhydris
         runner = CliRunner(mix_stderr=False)
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
@@ -153,24 +150,27 @@ class CorrectConfigurationTestCase(TestCase):
         self.assertEqual(self.result.exit_code, 0)
 
     def test_has_used_base_url(self):
-        self.mock_client.assert_called_once_with(
-            "https://example.com", "123456789abcdef0123456789abcdef012345678"
+        configuration = self.mock_enhydris.call_args[0][0]
+        self.assertEqual(configuration.base_url, "https://example.com")
+
+    def test_has_used_auth_token(self):
+        configuration = self.mock_enhydris.call_args[0][0]
+        self.assertEqual(
+            configuration.auth_token, "123456789abcdef0123456789abcdef012345678"
         )
 
-    def test_has_updated_database(self):
-        self.mock_update_db.assert_called_once_with(
+    def test_has_uploaded(self):
+        self.mock_enhydris.return_value.upload.assert_called_once_with(
             self.mock_meteologgerstorage.return_value
         )
 
 
 class CorrectConfigurationWithLogFileTestCase(TestCase):
-    @patch("loggertodb.cli.EnhydrisApiClient")
-    @patch("loggertodb.cli.LoggerToDb._update_database")
+    @patch("loggertodb.cli.Enhydris")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
     def test_creates_log_file(self, *args):
         self.mock_meteologgerstorage = args[0]
-        self.mock_update_db = args[1]
-        self.mock_client = args[2]
+        self.mock_enhydris = args[1]
         runner = CliRunner(mix_stderr=False)
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
@@ -192,66 +192,3 @@ class CorrectConfigurationWithLogFileTestCase(TestCase):
                 )
             self.result = runner.invoke(cli.main, ["loggertodb.conf"])
             self.assertTrue(os.path.exists("deleteme"))
-
-
-class UpdateDatabaseTestCase(TestCase):
-    @patch("loggertodb.cli.EnhydrisApiClient")
-    @patch("loggertodb.cli.meteologgerstorage.MeteologgerStorage_simple")
-    @patch("loggertodb.cli.HTimeseries", new=lambda x: x)
-    def setUp(self, mock_meteologgerstorage, mock_client):
-        # Configure EnhydrisApiClient mock
-        self.mock_client = mock_client
-        attrs = {
-            "return_value.get_ts_end_date.return_value": dt.datetime(2019, 3, 5, 7, 20)
-        }
-        self.mock_client.configure_mock(**attrs)
-
-        # Configure MeteologgerStorage mock
-        self.mock_meteologgerstorage = mock_meteologgerstorage
-        attrs = {
-            "return_value.timeseries_ids": {1, 2, 3},
-            "return_value.get_recent_data.side_effect": [
-                "new data for timeseries_id=1",
-                "new data for timeseries_id=2",
-                "new data for timeseries_id=3",
-            ],
-        }
-        self.mock_meteologgerstorage.configure_mock(**attrs)
-
-        runner = CliRunner(mix_stderr=False)
-        with runner.isolated_filesystem():
-            with open("loggertodb.conf", "w") as f:
-                f.write(
-                    textwrap.dedent(
-                        """\
-                        [General]
-                        base_url = https://example.com
-                        auth_token = 123456789abcdef0123456789abcdef012345678
-
-                        [My station]
-                        storage_format = simple
-                        station_id = 1334
-                        path = .
-                        fields = 1,2,3
-                        """
-                    )
-                )
-            runner.invoke(cli.main, ["loggertodb.conf"])
-
-    def test_called_get_recent_data_as_needed(self):
-        self.mock_meteologgerstorage.return_value.get_recent_data.assert_has_calls(
-            [
-                call(1, dt.datetime(2019, 3, 5, 7, 20)),
-                call(2, dt.datetime(2019, 3, 5, 7, 20)),
-                call(3, dt.datetime(2019, 3, 5, 7, 20)),
-            ]
-        )
-
-    def test_called_post_tsdata_as_needed(self):
-        self.mock_client.post_tsdata.has_calls(
-            [
-                call(1, "new data for timeseries_id=1"),
-                call(2, "new data for timeseries_id=2"),
-                call(3, "new data for timeseries_id=3"),
-            ]
-        )
