@@ -9,6 +9,7 @@ import click
 from . import __version__, meteologgerstorage
 from .enhydris import Enhydris
 from .exceptions import LoggerToDbError
+from .upgrade import ConfigFile
 
 
 class WrongValueError(configparser.Error):
@@ -21,11 +22,17 @@ class UnsupportedFormat(Exception):
 
 
 @click.command()
+@click.option(
+    "--upgrade", is_flag=True, default=False, help="Upgrade configuration file"
+)
 @click.argument("configfile")
 @click.version_option(version=__version__, prog_name="loggertodb")
-def main(configfile):
+def main(upgrade, configfile):
     """Insert meteorological logger data to Enhydris"""
-    LoggerToDb(configfile).run()
+    if upgrade:
+        ConfigFile(configfile).upgrade()
+    else:
+        LoggerToDb(configfile).run()
 
 
 class LoggerToDb:

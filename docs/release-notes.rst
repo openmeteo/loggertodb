@@ -23,10 +23,28 @@ Time series groups
 Enhydris 3 contains the notion of a time series group—a group of related
 time series for the same variable, e.g. the raw, checked and aggregated
 versions of a time series. Accordingly, ``loggertodb`` has been changed
-so that the ``fields`` parameter specifies time series group ids rather
-than time series ids. ``loggertodb`` will always upload data in the
-"raw" time series of the time series group; if such a time series does
-not exist, it is automatically created.
+so that the ``fields`` parameter and the wdat5-specific meteorological
+parameters specify time series group ids rather than time series ids.
+``loggertodb`` will always upload data in the "raw" time series of the time
+series group; if such a time series does not exist, it is automatically
+created.
+
+How to upgrade from version 1
+-----------------------------
+
+If you have a ``loggertodb`` v1 configuration file, ``loggertodb`` v2 can
+convert it. Enter this:
+
+   :samp:`loggertodb --upgrade {loggertodb.conf}`
+
+where :samp:`{loggertodb.conf}` is the configuration file you want to
+upgrade.  ``loggertodb`` will make requests to Enhydris in order to
+determine the ``auth_token`` from ``username`` and ``password``, and the
+time series group ids from the time series ids.  The configuration file
+will be upgraded accordingly. The original file will be backed up by
+adding the ``.bak`` extension (e.g. ``loggertodb.conf.bak``). (If the
+backup file already exists and is different from the original,
+``loggertodb`` will terminate with an error.)
 
 History up to Version 1
 =======================
