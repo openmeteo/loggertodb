@@ -2,8 +2,8 @@
 Release notes
 =============
 
-Version 2 (not released yet)
-============================
+Version 2.0 (2020-10-14)
+========================
 
 ``loggertodb`` version 2 is not compatible with Enhydris versions
 earlier than 3.  Use ``loggertodb`` version 1 for Enhydris version 2.
