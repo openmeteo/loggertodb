@@ -38,7 +38,16 @@ https://loggertodb.readthedocs.io.
 Creating a Windows executable
 =============================
 
-On Windows; the first time:
+**Note:** You have to work on Windows 7. If you work on Windows 10, the
+resulting executable might not run on Windows 7. If you find a way to
+create the executable on Windows 10 that runs on Windows 7 (or stop
+supporting Windows 7), fix this README.
+
+We've found that executables created on 64-bit Windows 7 do run on
+32-bit Windows 7, however ideally the resulting executable should be
+tested in both environments.
+
+The first time:
 
  1. Install ``git``.
  2. Install a recent Python 3 version.
