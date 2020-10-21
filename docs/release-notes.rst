@@ -46,6 +46,14 @@ adding the ``.bak`` extension (e.g. ``loggertodb.conf.bak``). (If the
 backup file already exists and is different from the original,
 ``loggertodb`` will terminate with an error.)
 
+Changes in 2.0 microversions
+----------------------------
+
+2.0.1 (2020-10-21)
+^^^^^^^^^^^^^^^^^^
+
+- Fixed inability of the 2.0.0 Windows executable to run on Windows 7.
+
 History up to Version 1
 =======================
 
