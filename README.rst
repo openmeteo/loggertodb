@@ -64,7 +64,9 @@ The first time:
 
 Next times:
 
- 1. ``rm -r dist loggertodb-windows.spec``
- 2. ``../venv/Scripts/pyinstaller --onefile --name=loggertodb bin/loggertodb-windows``
+ 1. ``../venv/Scripts/pip install -e .`` (to upgrade dependencies if needed)
+ 2. ``../venv/Scripts/python setup.py test``
+ 3. ``rm -r dist loggertodb.spec``
+ 4. ``../venv/Scripts/pyinstaller --onefile --name=loggertodb bin/loggertodb-windows``
 
 After this, ``loggertodb.exe`` should be in the ``dist`` directory.

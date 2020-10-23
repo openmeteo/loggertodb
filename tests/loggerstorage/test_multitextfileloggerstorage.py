@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 import textwrap
 
 from pyfakefs.fake_filesystem_unittest import TestCase
@@ -240,7 +241,7 @@ class BadFileOrder(TestCase):
         )
 
     def test_raises_value_error(self):
-        msg = "The order of timestamps in file /foo/bar1 is mixed up."
+        msg = fr"The order of timestamps in file \{os.sep}foo\{os.sep}bar1 is mixed up."
         with self.assertRaisesRegex(ValueError, msg):
             self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))
 
@@ -288,7 +289,10 @@ class FilesWithOverlap(TestCase):
         )
 
     def test_raises_value_error(self):
-        msg = "The timestamps in files /foo/bar1 and /foo/bar2 overlap."
+        msg = (
+            fr"The timestamps in files \{os.sep}foo\{os.sep}bar1 and "
+            fr"\{os.sep}foo\{os.sep}bar2 overlap."
+        )
         with self.assertRaisesRegex(ValueError, msg):
             self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))
 
@@ -323,6 +327,6 @@ class FileWithBadLine(TestCase):
         )
 
     def test_raises_error(self):
-        msg = '/foo/bar1: "Invalid line": Malformed line'
+        msg = fr'\{os.sep}foo\{os.sep}bar1: "Invalid line": Malformed line'
         with self.assertRaisesRegex(MeteologgerStorageReadError, msg):
             self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0))

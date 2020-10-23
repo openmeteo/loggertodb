@@ -54,6 +54,12 @@ Changes in 2.0 microversions
 
 - Fixed inability of the 2.0.0 Windows executable to run on Windows 7.
 
+2.0.2 (2020-10-23)
+^^^^^^^^^^^^^^^^^^
+
+- Fixed malfunctioning Windows executable (it had been built with wrong
+  dependencies).
+
 History up to Version 1
 =======================
 
