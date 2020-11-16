@@ -36,7 +36,7 @@ class GetStorageTailTestCase(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
-            "nullstr": "NULL",
+            "null": "NULL",
         }
         if self.use_headers_in_files:
             parms["ignore_lines"] = "Date"
@@ -144,7 +144,7 @@ class GetStorageTailNoFilesTestCase(TestCase):
                 "path": "/foo/bar?",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             }
         )
 
@@ -171,7 +171,7 @@ class GetStorageTailEmptyFileTestCase(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
-            "nullstr": "NULL",
+            "null": "NULL",
             "ignore_lines": "Date",
         }
         return DummyMultiTextFileMeteologgerStorage(parms)
@@ -223,7 +223,7 @@ class BadFileOrder(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
-            "nullstr": "NULL",
+            "null": "NULL",
             "ignore_lines": "Date",
         }
         return DummyMultiTextFileMeteologgerStorage(parms)
@@ -259,7 +259,7 @@ class FilesWithOverlap(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
-            "nullstr": "NULL",
+            "null": "NULL",
             "ignore_lines": "Date",
         }
         return DummyMultiTextFileMeteologgerStorage(parms)
@@ -309,7 +309,7 @@ class FileWithBadLine(TestCase):
             "path": "/foo/bar?",
             "storage_format": "simple",
             "fields": "5, 6",
-            "nullstr": "NULL",
+            "null": "NULL",
             "ignore_lines": "Date",
             "nfields_to_ignore": 1,
         }

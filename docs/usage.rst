@@ -1,3 +1,5 @@
+.. _usage:
+
 =====
 Usage
 =====
@@ -104,7 +106,7 @@ adjustments (see `Daylight saving time`_)::
     storage_format = simple
     date_format = %d/%m/%Y %H:%M:%S
     fields = 9180,9182,9184,9178
-    nullstr = NAN
+    null = NAN
     timezone = Europe/Athens
 
     [VILIA]
@@ -113,7 +115,7 @@ adjustments (see `Daylight saving time`_)::
     storage_format = simple
     date_format = %d/%m/%Y %H:%M:%S
     fields = 9172,9174,9176,9170
-    nullstr = NAN
+    null = NAN
     timezone = Europe/Athens
 
 The next is very similar to the previous one, but it's for Windows, it
@@ -134,7 +136,7 @@ line (after the date and time) is not uploaded::
     delimiter = ,
     date_format = %d-%m-%Y %H:%M:%S
     fields = 9290,9285,9292,9294,9295,0,9291,9289,9288,9286
-    nullstr = *
+    null = *
     timezone = Europe/Athens
 
     [KATO_KOSTILATA]
@@ -144,7 +146,7 @@ line (after the date and time) is not uploaded::
     delimiter = ,
     date_format = %d-%m-%Y %H:%M:%S
     fields = 9279,9274,9281,9283,9284,0,9280,9278,9277,9275
-    nullstr = *
+    null = *
     timezone = Europe/Athens
 
 Finally, an example of a configuration that uses the files produced by
@@ -260,11 +262,18 @@ subset_identifiers
    (Which fields are the subset identifiers depends on the data file
    format.)
 
-nullstr
+null
     Indicates how null values are represented in the source file. For
-    example, if ``nullstr = *``, then a ``*`` in place of a number in
-    the source file is interpreted as a missing value. Likewise for
-    ``nullstr = -9999``.
+    example, if ``null = *``, then a ``*`` in place of a number in the
+    source file is interpreted as a missing value.
+   
+    If the value is a number, e.g. ``null = -9999``, then any string
+    whose numeric value is that number will be interpreted as a missing
+    value, e.g. ``-9999``, ``-9999.00`` and ``-9999.000000`` will all be
+    interpreted as missing values. The comparison is made with a
+    tolerance of 1e-6.
+
+    (``nullstr`` is a deprecated synonym of ``null``.)
 
 delimiter, decimal_separator, date_format
    Some storage formats may be dependent upon regional settings; these

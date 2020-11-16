@@ -17,7 +17,7 @@ class ExtractTimestampTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "deltacom",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             },
             logger=dummy_logger,
         )
@@ -43,7 +43,7 @@ class GetItemFromLineTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "deltacom",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             },
             logger=dummy_logger,
         )

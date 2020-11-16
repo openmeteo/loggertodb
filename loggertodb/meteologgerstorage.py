@@ -206,6 +206,15 @@ class MeteologgerStorage(ABC):
     def _extract_value_and_flags(self, ts_id, record):
         pass
 
+    def _is_null(self, value):
+        if not self.null:
+            return False
+        try:
+            null = float(self.null)
+            return abs(float(value) - null) < 1e-6
+        except ValueError:
+            return value == self.null
+
 
 class TextFileMeteologgerStorage(MeteologgerStorage):
     def __init__(self, parameters, logger=None):
@@ -215,7 +224,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         self.delimiter = parameters.get("delimiter", None)
         self.decimal_separator = parameters.get("decimal_separator", "")
         self.date_format = parameters.get("date_format", "")
-        self.nullstr = parameters.get("nullstr", "")
+        self.null = parameters.get("null", parameters.get("nullstr", ""))
         self.nfields_to_ignore = int(parameters.get("nfields_to_ignore", "0"))
         self.ignore_lines = parameters.get("ignore_lines", "")
         self.encoding = parameters.get("encoding", "utf8")
@@ -225,6 +234,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
 
     def get_optional_parameters(self):
         return super().get_optional_parameters() | {
+            "null",
             "nullstr",
             "ignore_lines",
             "encoding",
@@ -399,7 +409,7 @@ class MeteologgerStorage_deltacom(TextFileMeteologgerStorage):
         if item[-1] in self.deltacom_flags.keys():
             flags = self.deltacom_flags[item[-1]]
             item = item[:-1]
-        if self.nullstr and item == self.nullstr:
+        if self._is_null(item):
             item = "NaN"
         return (float(item), flags)
 
@@ -427,9 +437,8 @@ class MeteologgerStorage_pc208w(TextFileMeteologgerStorage):
             item = line.split(",")[seq + 4].strip()
         except IndexError:
             raise ValueError()
-        if self.nullstr:
-            if item == self.nullstr:
-                item = float("NaN")
+        if self._is_null(item):
+            item = "NaN"
         return (float(item), "")
 
     def _subset_identifiers_match(self, line):
@@ -450,7 +459,7 @@ class MeteologgerStorage_CR1000(TextFileMeteologgerStorage):
 
     def _get_item_from_line(self, line, seq):
         item = line.split(",")[seq + 3].strip()
-        if self.nullstr and item == self.nullstr:
+        if self._is_null(item):
             item = "NaN"
         return (float(item), "")
 
@@ -490,7 +499,7 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
     def _get_item_from_line(self, line, seq):
         index = self.nfields_to_ignore + seq + (1 if self._separate_time else 0)
         value = line.split(self.delimiter)[index].strip().strip('"').strip()
-        if self.nullstr and value == self.nullstr:
+        if self._is_null(value):
             value = "NaN"
         return (float(value), "")
 
@@ -512,7 +521,7 @@ class MeteologgerStorage_lastem(TextFileMeteologgerStorage):
 
     def _get_item_from_line(self, line, seq):
         value = line.split(self.delimiter)[seq + 3]
-        if self.nullstr and value == self.nullstr:
+        if self._is_null(value):
             value = "NaN"
         else:
             value = value.replace(self.decimal_separator, ".")

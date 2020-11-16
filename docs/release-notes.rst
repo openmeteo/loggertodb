@@ -2,6 +2,13 @@
 Release notes
 =============
 
+Version 2.1 (2020-11-17)
+========================
+
+The ``nullstr`` parameter has been renamed to ``null``, keeping
+``nullstr`` as a deprecated synonym. If the value of ``null`` is a
+number, it is interpreted as a number instead of as a string.
+
 Version 2.0 (2020-10-14)
 ========================
 

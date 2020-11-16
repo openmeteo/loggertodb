@@ -50,7 +50,7 @@ class CheckParametersTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             }
         )
 
@@ -63,7 +63,7 @@ class TimeseriesIdsTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "dummy",
                 "fields": "0, 5, 0, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             }
         )
         self.assertEqual(meteologger_storage.timeseries_group_ids, set((5, 6)))
@@ -77,7 +77,7 @@ class ExtractValueAndFlagsTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             }
         )
         self.record = {
@@ -104,7 +104,7 @@ class GetStorageTailTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
             }
         )
         with Patcher() as patcher:
@@ -146,7 +146,7 @@ class GetRecentDataWithAmbiguousHourTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "timezone": "Europe/Athens",
             }
         )
@@ -226,7 +226,7 @@ class IgnoreLinesTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "ignore_lines": "ignore( this)? line",
             }
         )
@@ -272,7 +272,7 @@ class EncodingTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "ignore_lines": "n' est pas",
                 "encoding": "iso-8859-1",
             }
@@ -321,7 +321,7 @@ class EncodingErrorsTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "ignore_lines": "n' est pas",
             }
         )

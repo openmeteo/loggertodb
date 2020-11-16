@@ -15,7 +15,7 @@ class CheckParametersTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "delimiter": ",",
                 "date_format": "%Y-%m-%d %H:%M",
                 "nfields_to_ignore": 2,
@@ -33,7 +33,7 @@ class ExtractTimestampTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "delimiter": ",",
                 "date_format": "%d/%m/%Y %H:%M",
                 "nfields_to_ignore": 2,
@@ -139,7 +139,7 @@ class GetItemFromLineTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
-                "nullstr": "NULL",
+                "null": "NULL",
                 "delimiter": ",",
                 "date_format": "%d/%m/%Y %H:%M",
                 "nfields_to_ignore": 2,
@@ -174,3 +174,67 @@ class GetItemFromLineTestCase(TestCase):
             self.meteologger_storage._get_item_from_line(
                 "ign1,ign2,28/2/2019 13:47,hello,42.3\n", 1
             )
+
+
+class NullTestCase(TestCase):
+    def setUp(self):
+        dummy_logger = logging.getLogger("dummy")
+        dummy_logger.addHandler(logging.NullHandler())
+        self.meteologger_storage = MeteologgerStorage_simple(
+            {
+                "station_id": 1334,
+                "path": "/foo/bar",
+                "storage_format": "simple",
+                "fields": "5, 6",
+                "null": "-6999",
+                "delimiter": ",",
+                "date_format": "%d/%m/%Y %H:%M",
+                "nfields_to_ignore": 2,
+            },
+            logger=dummy_logger,
+        )
+        self.meteologger_storage._separate_time = False
+
+    def test_number_smaller_by_more_than_1e6_is_interpreted_as_number(self):
+        r = self.meteologger_storage._get_item_from_line(
+            "ign1, ign2, 28/2/2019 13:47,-6999.000002,42.3\n", 1
+        )
+        self.assertAlmostEqual(r[0], -6999.000002)
+
+    def test_number_greater_by_more_than_1e6_is_interpreted_as_number(self):
+        r = self.meteologger_storage._get_item_from_line(
+            "ign1, ign2, 28/2/2019 13:47,-6998.999998,42.3\n", 1
+        )
+        self.assertAlmostEqual(r[0], -6998.999998)
+
+    def test_number_smaller_by_less_than_1e6_is_interpreted_as_null(self):
+        r = self.meteologger_storage._get_item_from_line(
+            "ign1, ign2, 28/2/2019 13:47,-6999.0000007,42.3\n", 1
+        )
+        self.assertTrue(math.isnan(r[0]))
+
+    def test_number_greater_by_less_than_1e6_is_interpreted_as_null(self):
+        r = self.meteologger_storage._get_item_from_line(
+            "ign1, ign2, 28/2/2019 13:47,-6998.9999992,42.3\n", 1
+        )
+        self.assertTrue(math.isnan(r[0]))
+
+
+class NullStrTestCase(NullTestCase):
+    def setUp(self):
+        dummy_logger = logging.getLogger("dummy")
+        dummy_logger.addHandler(logging.NullHandler())
+        self.meteologger_storage = MeteologgerStorage_simple(
+            {
+                "station_id": 1334,
+                "path": "/foo/bar",
+                "storage_format": "simple",
+                "fields": "5, 6",
+                "nullstr": "-6999",
+                "delimiter": ",",
+                "date_format": "%d/%m/%Y %H:%M",
+                "nfields_to_ignore": 2,
+            },
+            logger=dummy_logger,
+        )
+        self.meteologger_storage._separate_time = False

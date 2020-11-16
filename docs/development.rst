@@ -49,10 +49,12 @@ specialized, each to a specific kind of meteologger storage.
 
       The pathname to the storage; a filename or directory name.
 
-   .. attribute:: nullstr
+   .. attribute:: null
 
-      A string representation of error values, treated as NaN (null
-      value) e.g. -6999.
+      A representation of values that will be treated as NaN (or null)
+      (see :ref:`usage` for more information).
+
+      (``nullstr`` is a deprecated synonym of ``null``.)
 
    .. attribute:: fields 
 
@@ -138,6 +140,11 @@ specialized, each to a specific kind of meteologger storage.
       raises an exception. *line* and *msg* are strings used in the
       error message.
 
+   .. method:: _is_null(value)
+
+      This is only meant to be called by subclasses whenever they want
+      to check whether a given value is null.
+
    :class:`MeteologgerStorage` subclasses need to define the following
    methods:
 
@@ -171,7 +178,7 @@ specialized, each to a specific kind of meteologger storage.
    .. method:: get_optional_parameters()
     
       Return a list of optional parameters. The base method returns
-      ``{"nullstr", "timezone"}`` and must be overridden if the subclass
-      allows a different set.
+      ``{"null", "nullstr", "timezone"}`` and must be overridden if the
+      subclass allows a different set.
 
 .. _Logger: http://docs.python.org/library/logging.html
