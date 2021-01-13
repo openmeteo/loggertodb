@@ -22,7 +22,7 @@ class Enhydris:
         self._upload_all_new_data()
 
     def _get_composite_timeseries_ids(self):
-        """Create a list of (timeseries_group_id, raw_timeseries_id) pairs."""
+        """Create a list of (timeseries_group_id, initial_timeseries_id) pairs."""
         station_id = self._meteologger_storage.station_id
         self._composite_timeseries_ids = []
         for timeseries_group_id in self._meteologger_storage.timeseries_group_ids:
@@ -34,7 +34,7 @@ class Enhydris:
     def _get_timeseries_id(self, station_id, timeseries_group_id):
         timeseries = self.client.list_timeseries(station_id, timeseries_group_id)
         for item in timeseries:
-            if item["type"] == "Raw":
+            if item["type"] == "Initial":
                 return item["id"]
         return self._create_timeseries(station_id, timeseries_group_id)
 
@@ -43,7 +43,7 @@ class Enhydris:
             station_id,
             timeseries_group_id,
             data={
-                "type": "Raw",
+                "type": "Initial",
                 "time_step": "",
                 "timeseries_group": timeseries_group_id,
             },

@@ -36,7 +36,7 @@ class UploadTestCase(TestCase):
         self._configure_MeteologgerStorage("timeseries_group_ids", {1})
         self._configure_EnhydrisApiClient(
             "list_timeseries.return_value",
-            [{"id": 4242, "type": "Raw"}, {"id": 4243, "type": "Checked"}],
+            [{"id": 4242, "type": "Initial"}, {"id": 4243, "type": "Checked"}],
         )
         self.enhydris.upload(self.MeteologgerStorage())
         self.EnhydrisApiClient.return_value.get_ts_end_date.assert_called_once_with(
@@ -51,14 +51,14 @@ class UploadTestCase(TestCase):
         )
         self.enhydris.upload(self.MeteologgerStorage())
         self.EnhydrisApiClient.return_value.post_timeseries.assert_called_once_with(
-            42, 1, data={"type": "Raw", "time_step": "", "timeseries_group": 1}
+            42, 1, data={"type": "Initial", "time_step": "", "timeseries_group": 1}
         )
 
     def test_does_not_create_timeseries_if_exists(self):
         self._configure_MeteologgerStorage("station_id", 42)
         self._configure_MeteologgerStorage("timeseries_group_ids", {1})
         self._configure_EnhydrisApiClient(
-            "list_timeseries.return_value", [{"id": 4242, "type": "Raw"}]
+            "list_timeseries.return_value", [{"id": 4242, "type": "Initial"}]
         )
         self.enhydris.upload(self.MeteologgerStorage())
         self.EnhydrisApiClient.return_value.post_timeseries.assert_not_called()
@@ -102,7 +102,7 @@ class UploadTestCase(TestCase):
         )
         self._configure_EnhydrisApiClient(
             "list_timeseries.side_effect",
-            [[{"id": 4242, "type": "Raw"}], [{"id": 4243, "type": "Raw"}]],
+            [[{"id": 4242, "type": "Initial"}], [{"id": 4243, "type": "Initial"}]],
         )
         self.enhydris.upload(self.MeteologgerStorage())
         self.EnhydrisApiClient.return_value.post_tsdata.assert_has_calls(

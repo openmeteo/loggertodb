@@ -2,6 +2,14 @@
 Release notes
 =============
 
+Version 2.2 (2021-01-13)
+========================
+
+This makes loggertodb compatible with a new version of Enhydris that
+no longer has a "raw" time series type, and instead has an "initial"
+time series type. (This update has occurred in an internal unnumbered
+Enhydris release that precedes the release of Enhydris 3).
+
 Version 2.1 (2020-11-17)
 ========================
 
@@ -28,13 +36,13 @@ Time series groups
 ------------------
 
 Enhydris 3 contains the notion of a time series group—a group of related
-time series for the same variable, e.g. the raw, checked and aggregated
-versions of a time series. Accordingly, ``loggertodb`` has been changed
-so that the ``fields`` parameter and the wdat5-specific meteorological
-parameters specify time series group ids rather than time series ids.
-``loggertodb`` will always upload data in the "raw" time series of the time
-series group; if such a time series does not exist, it is automatically
-created.
+time series for the same variable, e.g. the initial, checked and
+aggregated versions of a time series. Accordingly, ``loggertodb`` has
+been changed so that the ``fields`` parameter and the wdat5-specific
+meteorological parameters specify time series group ids rather than time
+series ids.  ``loggertodb`` will always upload data in the "initial"
+time series of the time series group; if such a time series does not
+exist, it is automatically created.
 
 How to upgrade from version 1
 -----------------------------

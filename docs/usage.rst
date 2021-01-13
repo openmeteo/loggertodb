@@ -237,9 +237,9 @@ fields
    and so on.
 
    Each time series group contains variations of the same time series,
-   such as raw, checked and aggregated. ``loggertodb`` uploads the data
-   to the "raw" time series of the group. If such a time series does not
-   exist, it is created.
+   such as initial, checked and aggregated. ``loggertodb`` uploads the
+   data to the "initial" time series of the group. If such a time series
+   does not exist, it is created.
 
 nfields_to_ignore
    This is used only in the ``simple`` format; it's an integer that
