@@ -3,16 +3,19 @@
 | Copyright (C) 2004 Antonis Christofides
 | Copyright (C) 2018-2021 Institute of Communications and Computer Systems
 
-This program was funded:
+This program  has received support in:
 
-* In 2013-2017 by the `TEI of Epirus`_ as part of the IRMA_ project.
-* In 2018-2021 by NTUA_ and ICCS_ as part of the OpenHi_ project.
+* 2013-2017 by the `TEI of Epirus`_ as part of the IRMA_ project.
+* 2018-2021 by NTUA_ and ICCS_ as part of the OpenHi_ project,
+   funded from the EU-Greece_ Sectoral Structural framework Antagonistikotita_.
 
 .. _ntua: http://www.ntua.gr/
 .. _tei of epirus: http://www.teiep.gr/en/
 .. _irma: http://www.irrigation-management.eu/
 .. _iccs: https://www.iccs.gr
 .. _openhi: https://openhi.net
+.. _Eu-Greece: https://www.espa.gr
+.. _Antagonistikotita: http://www.antagonistikotita.gr/epanek_en/index.asp
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
