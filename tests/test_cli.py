@@ -208,6 +208,7 @@ class UploadErrorTestCase(TestCase):
         station_id = 1334
         path = .
         fields = 1,2,3
+        timezone = Europe/Athens
         """
     )
 
@@ -237,5 +238,5 @@ class UploadErrorTestCase(TestCase):
         )
 
     def test_logs_traceback(self):
-        arg = self.mock_logging.getLogger.return_value.debug.call_args.args[0]
+        arg = self.mock_logging.getLogger.return_value.debug.call_args[0][0]
         self.assertTrue("Traceback" in arg)

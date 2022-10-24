@@ -3,6 +3,11 @@ import logging
 import math
 from unittest import TestCase
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 from loggertodb.exceptions import MeteologgerStorageReadError
 from loggertodb.meteologgerstorage import MeteologgerStorage_deltacom
 
@@ -18,6 +23,7 @@ class ExtractTimestampTestCase(TestCase):
                 "storage_format": "deltacom",
                 "fields": "5, 6",
                 "null": "NULL",
+                "timezone": "Etc/GMT-2",
             },
             logger=dummy_logger,
         )
@@ -25,7 +31,7 @@ class ExtractTimestampTestCase(TestCase):
     def test_extracts_timestamp(self):
         self.assertEqual(
             self.meteologger_storage._extract_timestamp("2019-02-28T13:47 25.2 42.3\n"),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 13, 47, tzinfo=ZoneInfo("Etc/GMT-2")),
         )
 
     def test_raises_error_on_invalid_date(self):
@@ -44,6 +50,7 @@ class GetItemFromLineTestCase(TestCase):
                 "storage_format": "deltacom",
                 "fields": "5, 6",
                 "null": "NULL",
+                "timezone": "Etc/GMT-2",
             },
             logger=dummy_logger,
         )

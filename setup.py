@@ -9,10 +9,11 @@ with open("README.rst") as readme_file:
     readme = readme_file.read()
 
 requirements = [
-    "Click>=7.0,<8",
+    "Click>=7,<9",
     "iso8601",
     "simpletail",
-    "enhydris-api-client>=2,<3",
+    "tzdata",
+    "enhydris-api-client>=3,<4",
 ]
 
 setup_requirements = []

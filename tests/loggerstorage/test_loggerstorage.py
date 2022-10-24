@@ -3,6 +3,11 @@ from collections import OrderedDict
 from unittest import TestCase
 from unittest.mock import patch
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 import pandas as pd
 
 from loggertodb import ConfigurationError
@@ -38,17 +43,31 @@ class MeteologgerStorageCheckParametersTestCase(TestCase):
     def test_raises_error_on_path_missing(self):
         expected_error_message = 'Parameter "path" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage({"station_id": 1334, "storage_format": "dummy"})
+            DummyMeteologgerStorage(
+                {"station_id": 1334, "storage_format": "dummy", "timezone": "Etc/GMT-2"}
+            )
 
     def test_raises_error_on_storage_format_missing(self):
         expected_error_message = 'Parameter "storage_format" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage({"station_id": 1334, "path": "irrelevant"})
+            DummyMeteologgerStorage(
+                {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "timezone": "Etc/GMT-2",
+                }
+            )
 
     def test_raises_error_on_station_missing(self):
         expected_error_message = 'Parameter "station_id" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage({"path": "irrelevant", "storage_format": "dummy"})
+            DummyMeteologgerStorage(
+                {
+                    "path": "irrelevant",
+                    "storage_format": "dummy",
+                    "timezone": "Etc/GMT-2",
+                }
+            )
 
     def test_raises_error_on_invalid_parameter(self):
         expected_error_message = 'Unknown parameter "hello"'
@@ -59,6 +78,7 @@ class MeteologgerStorageCheckParametersTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "dummy",
                     "hello": "world",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -66,14 +86,24 @@ class MeteologgerStorageCheckParametersTestCase(TestCase):
 class MeteologgerStorageGetRecentDataTestCase(TestCase):
     def setUp(self):
         self.storage = DummyMeteologgerStorage(
-            {"station_id": 1334, "path": "irrelevant", "storage_format": "dummy"}
+            {
+                "station_id": 1334,
+                "path": "irrelevant",
+                "storage_format": "dummy",
+                "timezone": "Etc/GMT-2",
+            }
         )
-        self.result = self.storage.get_recent_data(15, dt.datetime(2019, 2, 27, 12, 52))
+        self.result = self.storage.get_recent_data(
+            15, dt.datetime(2019, 2, 27, 12, 52, tzinfo=ZoneInfo("Etc/GMT-2"))
+        )
 
     def test_return_value(self):
         expected_result = pd.DataFrame(
             data=OrderedDict([("value", [15, 15]), ("flags", ["line1", "line2"])]),
-            index=[dt.datetime(2019, 2, 27, 12, 53), dt.datetime(2019, 2, 27, 12, 54)],
+            index=[
+                dt.datetime(2019, 2, 27, 10, 53, tzinfo=dt.timezone.utc),
+                dt.datetime(2019, 2, 27, 10, 54, tzinfo=dt.timezone.utc),
+            ],
             dtype=object,
         )
         pd.testing.assert_frame_equal(self.result, expected_result)
@@ -83,11 +113,11 @@ class MeteologgerStorageGetRecentDataTestCase(TestCase):
         # timeseries, and a timestamp later than the previous one. It should work
         # correctly.
         second_result = self.storage.get_recent_data(
-            16, dt.datetime(2019, 2, 27, 12, 53)
+            16, dt.datetime(2019, 2, 27, 12, 53, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         expected_result = pd.DataFrame(
             data=OrderedDict([("value", [16]), ("flags", ["line2"])]),
-            index=[dt.datetime(2019, 2, 27, 12, 54)],
+            index=[dt.datetime(2019, 2, 27, 10, 54, tzinfo=dt.timezone.utc)],
             dtype=object,
         )
         pd.testing.assert_frame_equal(second_result, expected_result)
@@ -96,14 +126,19 @@ class MeteologgerStorageGetRecentDataTestCase(TestCase):
 class MeteologgerStorageGetRecentDataWrongOrderTestCase(TestCase):
     def setUp(self):
         self.storage = DummyWrongOrderMeteologgerStorage(
-            {"station_id": 1334, "path": "irrelevant", "storage_format": "dummy"}
+            {
+                "station_id": 1334,
+                "path": "irrelevant",
+                "storage_format": "dummy",
+                "timezone": "Etc/GMT-2",
+            }
         )
 
     def test_exception(self):
-        msg = "incorrectly ordered after 2019-02-27T12:54:00"
+        msg = "incorrectly ordered after 2019-02-27 10:54:00 UTC"
         with self.assertRaisesRegex(ValueError, msg):
             self.result = self.storage.get_recent_data(
-                15, dt.datetime(2019, 2, 27, 12, 52)
+                15, dt.datetime(2019, 2, 27, 12, 52, tzinfo=ZoneInfo("Etc/GMT-2"))
             )
 
 
@@ -118,28 +153,6 @@ class PatchableDatetime(dt.datetime):
     pass
 
 
-class EETTimezone(dt.tzinfo):
-    def utcoffset(self, adatetime):
-        return dt.timedelta(hours=2)
-
-    def dst(self, adatetime):
-        return None
-
-    def tzname(self, adatetime):
-        return "EET"
-
-
-class EESTTimezone(dt.tzinfo):
-    def utcoffset(self, adatetime):
-        return dt.timedelta(hours=3)
-
-    def dst(self, adatetime):
-        return dt.timedelta(hours=1)
-
-    def tzname(self, adatetime):
-        return "EEST"
-
-
 class MeteologgerStorageFixDstTestCase(TestCase):
     def setUp(self):
         self.storage = DummyMeteologgerStorage(
@@ -151,36 +164,50 @@ class MeteologgerStorageFixDstTestCase(TestCase):
             }
         )
 
-    def test_date_without_dst_is_returned_as_is(self):
+    def test_date_without_dst(self):
         self.assertEqual(
-            self.storage._fix_dst(dt.datetime(2019, 2, 27, 13, 39)),
-            dt.datetime(2019, 2, 27, 13, 39),
+            self.storage._get_datetime_with_correct_fold(
+                dt.datetime(2019, 2, 27, 13, 39, tzinfo=ZoneInfo("Europe/Athens"))
+            ),
+            dt.datetime(2019, 2, 27, 11, 39, tzinfo=dt.timezone.utc),
         )
 
-    def test_date_with_dst_is_returned_with_dst_removed(self):
+    def test_date_with_dst(self):
         self.assertEqual(
-            self.storage._fix_dst(dt.datetime(2019, 4, 27, 13, 39)),
-            dt.datetime(2019, 4, 27, 12, 39),
-        )
-
-    @patch(
-        "loggertodb.meteologgerstorage.dt.datetime.now",
-        return_value=dt.datetime(2018, 10, 28, 5, 0, tzinfo=EETTimezone()),
-    )
-    @patch("loggertodb.meteologgerstorage.dt.datetime", new=PatchableDatetime)
-    def test_ambiguous_date_is_returned_as_is_after_dst_switch(self, m):
-        self.assertEqual(
-            self.storage._fix_dst(dt.datetime(2018, 10, 28, 3, 30)),
-            dt.datetime(2018, 10, 28, 3, 30),
+            self.storage._get_datetime_with_correct_fold(
+                dt.datetime(2019, 4, 27, 13, 39, tzinfo=ZoneInfo("Europe/Athens"))
+            ),
+            dt.datetime(2019, 4, 27, 10, 39, tzinfo=dt.timezone.utc),
         )
 
     @patch(
         "loggertodb.meteologgerstorage.dt.datetime.now",
-        return_value=dt.datetime(2018, 10, 28, 1, 0, tzinfo=EESTTimezone()),
+        return_value=dt.datetime(2018, 10, 28, 2, 0, tzinfo=dt.timezone.utc),
     )
     @patch("loggertodb.meteologgerstorage.dt.datetime", new=PatchableDatetime)
-    def test_ambiguous_date_is_returned_with_dst_removed_before_dst_switch(self, m):
+    def test_ambiguous_date_after_dst_switch(self, m):
         self.assertEqual(
-            self.storage._fix_dst(dt.datetime(2018, 10, 28, 3, 30)),
-            dt.datetime(2018, 10, 28, 2, 30),
+            self.storage._get_datetime_with_correct_fold(
+                dt.datetime(2018, 10, 28, 3, 30, tzinfo=ZoneInfo("Europe/Athens"))
+            ).astimezone(dt.timezone.utc),
+            dt.datetime(2018, 10, 28, 1, 30, tzinfo=dt.timezone.utc),
+        )
+
+    @patch(
+        "loggertodb.meteologgerstorage.dt.datetime.now",
+        return_value=dt.datetime(2018, 10, 28, 0, 0, tzinfo=dt.timezone.utc),
+    )
+    @patch("loggertodb.meteologgerstorage.dt.datetime", new=PatchableDatetime)
+    def test_ambiguous_date_before_dst_switch(self, m):
+        # See it once
+        self.storage._get_datetime_with_correct_fold(
+            dt.datetime(2018, 10, 28, 3, 30, tzinfo=ZoneInfo("Europe/Athens"))
+        )
+
+        # Then see it again
+        self.assertEqual(
+            self.storage._get_datetime_with_correct_fold(
+                dt.datetime(2018, 10, 28, 3, 30, tzinfo=ZoneInfo("Europe/Athens"))
+            ).astimezone(dt.timezone.utc),
+            dt.datetime(2018, 10, 28, 0, 30, tzinfo=dt.timezone.utc),
         )

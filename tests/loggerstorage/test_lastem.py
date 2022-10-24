@@ -17,6 +17,7 @@ class CheckParametersTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "dummy",
                     "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -27,6 +28,7 @@ class CheckParametersTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "subset_identifiers": "18,19,20",
                 "delimiter": ";",
@@ -47,6 +49,7 @@ class ExtractTimestampTestCase(TestCase):
                 "storage_format": "simple",
                 "fields": "5, 6",
                 "null": "NULL",
+                "timezone": "Etc/GMT-2",
                 "subset_identifiers": "18,19,20",
                 "delimiter": ";",
                 "decimal_separator": ",",
@@ -60,7 +63,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 "18;19;20;28/2/2019 13:47;25,2;42,3\n"
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
 
     def test_raises_error_on_invalid_date(self):
@@ -80,6 +83,7 @@ class GetItemFromLineTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "subset_identifiers": "18,19,20",
                 "delimiter": ";",
@@ -128,6 +132,7 @@ class SubsetIdentifiersMatchTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "subset_identifiers": "18,19,20",
                 "delimiter": ";",

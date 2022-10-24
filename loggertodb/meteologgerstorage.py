@@ -6,10 +6,14 @@ import struct
 from abc import ABC, abstractmethod
 from glob import glob
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 import iso8601
 import numpy as np
 import pandas as pd
-from pytz import timezone
 from simpletail import ropen
 
 from .exceptions import ConfigurationError, MeteologgerStorageReadError
@@ -23,7 +27,8 @@ class MeteologgerStorage(ABC):
         self.__check_parameters(parameters)
         self.station_id = int(parameters["station_id"])
         self.path = parameters["path"]
-        self.timezone = timezone(parameters.get("timezone", "UTC"))
+        self.timezone = parameters["timezone"]
+        self.tzinfo = ZoneInfo(self.timezone)
         self.logger = logger
         if not self.logger:
             self.logger = logging.getLogger("loggerstorage")
@@ -50,7 +55,9 @@ class MeteologgerStorage(ABC):
     def get_recent_data(self, ts_group_id, after_timestamp):
         self._reset_ambiguous_hour_data()
         cached_after_timestamp = getattr(
-            self, "_cached_after_timestamp", dt.datetime(9999, 12, 31)
+            self,
+            "_cached_after_timestamp",
+            dt.datetime(9999, 12, 31, tzinfo=ZoneInfo("Etc/GMT")),
         )
         if after_timestamp < cached_after_timestamp:
             self._extract_data(after_timestamp=after_timestamp)
@@ -66,9 +73,8 @@ class MeteologgerStorage(ABC):
 
     def _raise_monotonic_exception(self, index):
         offending_date = self._locate_first_nonmonotonic_date(index)
-        raise ValueError(
-            "Data is incorrectly ordered after " + offending_date.isoformat()
-        )
+        date_str = offending_date.isoformat(sep=" ")[:19] + " UTC"
+        raise ValueError(f"Data is incorrectly ordered after {date_str}")
 
     def _locate_first_nonmonotonic_date(self, index):
         prev = None
@@ -120,7 +126,9 @@ class MeteologgerStorage(ABC):
         # Replace self._cached_data and self._after_timestamp, if any
         self._cached_data = {
             tsg_id: pd.DataFrame(
-                columns=["value", "flags"], index=index, data=data[tsg_id]
+                columns=["value", "flags"],
+                index=pd.DatetimeIndex(index, tz=dt.timezone.utc),
+                data=data[tsg_id],
             )
             for tsg_id in self.timeseries_group_ids
         }
@@ -140,53 +148,38 @@ class MeteologgerStorage(ABC):
         there are keys like "outsidetemp" etc., holding the values of the variables.
         """
 
-    def _fix_dst(self, adatetime):
-        """Remove any DST from a date.
-
-        Determine if a date contains DST. If it does, remove the extra hour. Returns the
-        fixed date.
-
-        If adatetime is an ambiguous hour, then we try to deduce whether it is in dst or
-        not. If the switch hasn't occurred yet, we conclude it's in dst. If the switch
-        has occurred, we conclude it's not in dst, unless we've already seen that date
-        (i.e. already dealt with it in a previous call—remember we process files
-        backwards, from later to earlier dates); in that case, we conclude it's in dst.
-        """
-        if not hasattr(self.timezone, "_utc_transition_times"):
-            return adatetime  # Timezone does not switch to DST
-        is_dst = self._auto_detect_is_dst(adatetime)
-        return adatetime - self.timezone.dst(adatetime, is_dst=is_dst)
-
     def _reset_ambiguous_hour_data(self):
-        self._dates_already_seen = set()
+        self._ambiguous_timestamps_already_seen = set()
         self._we_are_in_the_second_occurrence_of_the_ambigous_hour = False
 
-    def _auto_detect_is_dst(self, adatetime):
+    def _get_datetime_with_correct_fold(self, adatetime):
         if self._datetime_is_ambiguous(adatetime):
-            return self._determine_is_dst_for_ambiguous_hour(adatetime)
+            fold = self._determine_fold_for_ambiguous_hour(adatetime)
+            return adatetime.replace(fold=fold)
         else:
             self._reset_ambiguous_hour_data()
-            return None
+            return adatetime
 
     def _datetime_is_ambiguous(self, adatetime):
-        dst = self.timezone.dst
-        return dst(adatetime, is_dst=True) != dst(adatetime, is_dst=False)
+        utc = dt.timezone.utc
+        return adatetime.replace(fold=0).astimezone(utc) != adatetime.replace(
+            fold=1
+        ).astimezone(utc)
 
-    def _determine_is_dst_for_ambiguous_hour(self, adatetime):
+    def _determine_fold_for_ambiguous_hour(self, adatetime):
         if self._switch_has_not_occurred(adatetime):
-            return True
+            return 0
         if self._we_are_in_the_second_occurrence_of_the_ambigous_hour:
-            return True
-        if adatetime in self._dates_already_seen:
+            return 0
+        if adatetime in self._ambiguous_timestamps_already_seen:
             self._we_are_in_the_second_occurrence_of_the_ambigous_hour = True
-            return True
-        self._dates_already_seen.add(adatetime)
-        return False
+            return 0
+        self._ambiguous_timestamps_already_seen.add(adatetime)
+        return 1
 
     def _switch_has_not_occurred(self, adatetime):
-        now = dt.datetime.now(self.timezone)
-        now_naive = now.replace(tzinfo=None)
-        if abs(adatetime - now_naive) > dt.timedelta(hours=24):
+        now = dt.datetime.now(dt.timezone.utc)
+        if abs(adatetime - now) > dt.timedelta(hours=24):
             return False
         return bool(now.dst())
 
@@ -197,10 +190,10 @@ class MeteologgerStorage(ABC):
         raise MeteologgerStorageReadError(errmessage)
 
     def get_required_parameters(self):
-        return {"path", "storage_format", "station_id"}
+        return {"path", "storage_format", "station_id", "timezone"}
 
     def get_optional_parameters(self):
-        return {"timezone"}
+        return set()
 
     @abstractmethod
     def _extract_value_and_flags(self, ts_id, record):
@@ -280,7 +273,8 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
                     self.logger.debug("Parsing line '{}'".format(line))
 
                 timestamp = self._extract_timestamp(line).replace(second=0)
-                timestamp = self._fix_dst(timestamp)
+                timestamp = self._get_datetime_with_correct_fold(timestamp)
+                timestamp = timestamp.astimezone(dt.timezone.utc)
                 if timestamp == prev_timestamp:
                     w = "Omitting line with repeated timestamp " + timestamp.isoformat()
                     self.logger.warning(w)
@@ -314,7 +308,9 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
             self.filename = filename
             files.append(self._get_file())
         self._sorted_files = sorted(
-            files, key=lambda x: x["last_date"] or dt.datetime(1700, 1, 1, 0, 0)
+            files,
+            key=lambda x: x["last_date"]
+            or dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc),
         )
 
     def _get_file(self):
@@ -330,7 +326,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 if self._must_ignore_line(line):
                     continue
                 timestamp = self._extract_timestamp(line).replace(second=0)
-                timestamp = self._fix_dst(timestamp)
+                timestamp = self._get_datetime_with_correct_fold(timestamp)
                 return timestamp
         return None
 
@@ -340,7 +336,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 if self._must_ignore_line(line):
                     continue
                 timestamp = self._extract_timestamp(line).replace(second=0)
-                timestamp = self._fix_dst(timestamp)
+                timestamp = self._get_datetime_with_correct_fold(timestamp)
                 return timestamp
         return None
 
@@ -399,7 +395,7 @@ class MeteologgerStorage_deltacom(TextFileMeteologgerStorage):
 
     def _extract_timestamp(self, line):
         try:
-            return iso8601.parse_date(line.split()[0], default_timezone=None)
+            return iso8601.parse_date(line.split()[0], default_timezone=self.tzinfo)
         except (ValueError, iso8601.ParseError):
             self._raise_error(line, "parse error or invalid date")
 
@@ -428,7 +424,9 @@ class MeteologgerStorage_pc208w(TextFileMeteologgerStorage):
             if hour == 24:
                 hour = 0
                 yday = yday + 1
-            return dt.datetime(year, 1, 1, hour, minute) + dt.timedelta(yday - 1)
+            return dt.datetime(
+                year, 1, 1, hour, minute, tzinfo=self.tzinfo
+            ) + dt.timedelta(yday - 1)
         except (IndexError, ValueError):
             self._raise_error(line, "parse error or invalid date")
 
@@ -453,7 +451,7 @@ class MeteologgerStorage_CR1000(TextFileMeteologgerStorage):
     def _extract_timestamp(self, line):
         try:
             datestr = line.split(",")[0].strip('"')
-            return iso8601.parse_date(datestr[:16], default_timezone=None)
+            return iso8601.parse_date(datestr[:16], default_timezone=self.tzinfo)
         except (IndexError, iso8601.ParseError):
             self._raise_error(line, "parse error or invalid date")
 
@@ -484,10 +482,10 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
                 self._separate_time = True
             if self.date_format:
                 result = dt.datetime.strptime(datestr, self.date_format).replace(
-                    second=0
+                    second=0, tzinfo=self.tzinfo
                 )
             else:
-                result = iso8601.parse_date(datestr[:16], default_timezone=None)
+                result = iso8601.parse_date(datestr[:16], default_timezone=self.tzinfo)
             return result
         except ValueError as e:
             self._raise_error(
@@ -515,7 +513,9 @@ class MeteologgerStorage_lastem(TextFileMeteologgerStorage):
     def _extract_timestamp(self, line):
         try:
             date = line.split(self.delimiter)[3]
-            return dt.datetime.strptime(date, self.date_format)
+            result = dt.datetime.strptime(date, self.date_format)
+            result = result.replace(tzinfo=self.tzinfo)
+            return result
         except (IndexError, ValueError):
             self._raise_error(line, "parse error or invalid date")
 
@@ -696,9 +696,9 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
                         continue
                     decoded_record = self.__decode_wdat_record(record)
                     timestamp = dt.datetime(
-                        year=year, month=month, day=day
+                        year=year, month=month, day=day, tzinfo=self.tzinfo
                     ) + dt.timedelta(minutes=decoded_record["packedtime"])
-                    timestamp = self._fix_dst(timestamp)
+                    timestamp = self._get_datetime_with_correct_fold(timestamp)
                     if timestamp <= after_timestamp:
                         continue
                     decoded_record["timestamp"] = timestamp
@@ -861,7 +861,7 @@ class MeteologgerStorage_odbc(MeteologgerStorage_simple):
             line = row[0]  # Our SQL returns a single string
             self.logger.debug(line)
             date = self._extract_timestamp(line).replace(second=0)
-            date = self._fix_dst(date)
+            date = self._get_datetime_with_correct_fold(date)
             self.logger.debug("Date: " + date.isoformat())
             if date <= after_timestamp:
                 break

@@ -122,8 +122,9 @@ specialized, each to a specific kind of meteologger storage.
 
       Read the storage and extract the last part of the time series that
       is specified by *ts_group_id* and *ts_id*; specifically, provide
-      the part that is more recent than *after_timestamp*. Returns that
-      part of the time series as a pandas dataframe.
+      the part that is more recent than *after_timestamp* (an aware
+      :class:`datetime` object). Returns that part of the time series as
+      a pandas dataframe.
 
       :meth:`get_recent_data()` will actually extract the last part of
       all time series from storage, but only return the data for the
@@ -157,8 +158,8 @@ specialized, each to a specific kind of meteologger storage.
 
    .. method:: _extract_timestamp(line)
 
-      Parse *line* and extract and return the date and time as a
-      datetime_ object.
+      Parse *line* and extract and return the date and time as an
+      aware datetime_ object.
 
       .. _datetime: http://docs.python.org/library/datetime.html#datetime-objects
       
@@ -178,7 +179,7 @@ specialized, each to a specific kind of meteologger storage.
    .. method:: get_optional_parameters()
     
       Return a list of optional parameters. The base method returns
-      ``{"null", "nullstr", "timezone"}`` and must be overridden if the
-      subclass allows a different set.
+      an empty set and must be overridden if the subclass allows a
+      different set.
 
 .. _Logger: http://docs.python.org/library/logging.html

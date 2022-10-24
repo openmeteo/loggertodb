@@ -2,6 +2,11 @@ import datetime as dt
 import os
 import textwrap
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 from pyfakefs.fake_filesystem_unittest import TestCase
 
 from loggertodb.exceptions import MeteologgerStorageReadError
@@ -13,7 +18,9 @@ from loggertodb.meteologgerstorage import (
 
 class DummyMultiTextFileMeteologgerStorage(MultiTextFileMeteologgerStorage):
     def _extract_timestamp(self, line):
-        return dt.datetime.strptime(line[:16], "%Y-%m-%d %H:%M")
+        result = dt.datetime.strptime(line[:16], "%Y-%m-%d %H:%M")
+        result = result.replace(tzinfo=ZoneInfo("Etc/GMT-2"))
+        return result
 
     def _get_item_from_line(self, line, seq):
         line_items = line.strip().split(",")[1:]
@@ -36,6 +43,7 @@ class GetStorageTailTestCase(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
+            "timezone": "Etc/GMT-2",
             "null": "NULL",
         }
         if self.use_headers_in_files:
@@ -64,13 +72,15 @@ class GetStorageTailTestCase(TestCase):
 
     def test_get_storage_tail_from_last_file(self):
         self.result = self.meteologger_storage._get_storage_tail(
-            dt.datetime(2019, 2, 28, 17, 20)
+            dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         self.assertEqual(
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 }
             ],
@@ -78,21 +88,27 @@ class GetStorageTailTestCase(TestCase):
 
     def test_get_storage_tail_from_last_but_one_file(self):
         self.result = self.meteologger_storage._get_storage_tail(
-            dt.datetime(2018, 2, 28, 17, 20)
+            dt.datetime(2018, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         self.assertEqual(
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2018, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2018, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2018-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 20),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:20,42.1,24.2\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 },
             ],
@@ -100,33 +116,45 @@ class GetStorageTailTestCase(TestCase):
 
     def test_get_storage_tail_from_all_files(self):
         self.result = self.meteologger_storage._get_storage_tail(
-            dt.datetime(2016, 2, 28, 17, 20)
+            dt.datetime(2016, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         self.assertEqual(
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2017, 2, 28, 17, 20),
+                    "timestamp": dt.datetime(
+                        2017, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2017-02-28 17:20,42.1,24.2\n",
                 },
                 {
-                    "timestamp": dt.datetime(2017, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2017, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2017-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2018, 2, 28, 17, 20),
+                    "timestamp": dt.datetime(
+                        2018, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2018-02-28 17:20,42.1,24.2\n",
                 },
                 {
-                    "timestamp": dt.datetime(2018, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2018, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2018-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 20),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:20,42.1,24.2\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 },
             ],
@@ -144,6 +172,7 @@ class GetStorageTailNoFilesTestCase(TestCase):
                 "path": "/foo/bar?",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
             }
         )
@@ -170,6 +199,7 @@ class GetStorageTailEmptyFileTestCase(TestCase):
             "station_id": 1334,
             "path": "/foo/bar?",
             "storage_format": "dummy",
+            "timezone": "Etc/GMT-2",
             "fields": "5, 6",
             "null": "NULL",
             "ignore_lines": "Date",
@@ -206,7 +236,7 @@ class GetStorageTailEmptyFileTestCase(TestCase):
 
     def test_get_entire_storage_tail(self):
         self.result = self.meteologger_storage._get_storage_tail(
-            dt.datetime(1700, 1, 1, 0, 0)
+            dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
         )
         self.assertEqual(len(self.result), 4)
 
@@ -223,6 +253,7 @@ class BadFileOrder(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
+            "timezone": "Etc/GMT-2",
             "null": "NULL",
             "ignore_lines": "Date",
         }
@@ -243,7 +274,9 @@ class BadFileOrder(TestCase):
     def test_raises_value_error(self):
         msg = rf"The order of timestamps in file \{os.sep}foo\{os.sep}bar1 is mixed up."
         with self.assertRaisesRegex(ValueError, msg):
-            self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))
+            self.meteologger_storage.get_recent_data(
+                5, dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
+            )
 
 
 class FilesWithOverlap(TestCase):
@@ -259,6 +292,7 @@ class FilesWithOverlap(TestCase):
             "path": "/foo/bar?",
             "storage_format": "dummy",
             "fields": "5, 6",
+            "timezone": "Etc/GMT-2",
             "null": "NULL",
             "ignore_lines": "Date",
         }
@@ -294,7 +328,9 @@ class FilesWithOverlap(TestCase):
             rf"\{os.sep}foo\{os.sep}bar2 overlap."
         )
         with self.assertRaisesRegex(ValueError, msg):
-            self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0, 0))
+            self.meteologger_storage.get_recent_data(
+                5, dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
+            )
 
 
 class FileWithBadLine(TestCase):
@@ -309,6 +345,7 @@ class FileWithBadLine(TestCase):
             "path": "/foo/bar?",
             "storage_format": "simple",
             "fields": "5, 6",
+            "timezone": "Etc/GMT-2",
             "null": "NULL",
             "ignore_lines": "Date",
             "nfields_to_ignore": 1,
@@ -329,4 +366,6 @@ class FileWithBadLine(TestCase):
     def test_raises_error(self):
         msg = rf'\{os.sep}foo\{os.sep}bar1: "Invalid line": Malformed line'
         with self.assertRaisesRegex(MeteologgerStorageReadError, msg):
-            self.meteologger_storage.get_recent_data(5, dt.datetime(1700, 1, 1, 0))
+            self.meteologger_storage.get_recent_data(
+                5, dt.datetime(1700, 1, 1, 0, tzinfo=dt.timezone.utc)
+            )

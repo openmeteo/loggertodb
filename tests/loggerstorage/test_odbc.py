@@ -2,6 +2,11 @@ import datetime as dt
 from unittest import TestCase
 from unittest.mock import call, patch
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 from loggertodb.exceptions import ConfigurationError
 from loggertodb.meteologgerstorage import MeteologgerStorage_odbc
 
@@ -18,6 +23,7 @@ class ConfigurationTestCase(TestCase):
                     "fields": "5, 6",
                     "date_sql": "irrelevant",
                     "data_columns": "irrelevant",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -32,6 +38,7 @@ class ConfigurationTestCase(TestCase):
                     "fields": "5, 6",
                     "table": "irrelevant",
                     "data_columns": "irrelevant",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -46,6 +53,7 @@ class ConfigurationTestCase(TestCase):
                     "fields": "5, 6",
                     "table": "irrelevant",
                     "date_sql": "irrelevant",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -58,6 +66,7 @@ class ConfigurationTestCase(TestCase):
                 "fields": "5, 6",
                 "table": "irrelevant",
                 "date_sql": "irrelevant",
+                "timezone": "Etc/GMT-2",
                 "data_columns": "irrelevant",
                 "date_format": "irrelevant",
                 "decimal_separator": "irrelevant",
@@ -67,7 +76,10 @@ class ConfigurationTestCase(TestCase):
 
 class GetStorageTailTestCase(TestCase):
     @patch("loggertodb.meteologgerstorage.pyodbc")
-    @patch("loggertodb.meteologgerstorage.MeteologgerStorage._fix_dst")
+    @patch(
+        "loggertodb.meteologgerstorage.MeteologgerStorage"
+        "._get_datetime_with_correct_fold"
+    )
     def setUp(self, m2, m1):
         # Configure pyodbc mock
         self.pyodbc = m1
@@ -79,9 +91,11 @@ class GetStorageTailTestCase(TestCase):
         }
         self.pyodbc.configure_mock(**attrs)
 
-        # Configure _fix_dst mock
-        self.patched_fix_dst = m2
-        self.patched_fix_dst.configure_mock(side_effect=lambda x: x)
+        # Configure _get_datetime_with_correct_fold mock
+        self.patched_get_datetime_with_correct_fold = m2
+        self.patched_get_datetime_with_correct_fold.configure_mock(
+            side_effect=lambda x: x
+        )
 
         self.meteologger_storage = MeteologgerStorage_odbc(
             {
@@ -89,6 +103,7 @@ class GetStorageTailTestCase(TestCase):
                 "path": "Some ODBC path",
                 "storage_format": "odbc",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "table": "SomeSQLTable",
                 "data_columns": "variable1,variable2",
                 "date_format": "%Y-%m-%d %H:%M",
@@ -97,7 +112,7 @@ class GetStorageTailTestCase(TestCase):
             }
         )
         self.result = self.meteologger_storage._get_storage_tail(
-            dt.datetime(2019, 3, 2, 3, 0)
+            dt.datetime(2019, 3, 2, 3, 0, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
 
     def test_connected(self):
@@ -114,18 +129,27 @@ class GetStorageTailTestCase(TestCase):
         self.assertEqual(len(self.result), 2)
 
     def test_result_timestamp_1(self):
-        self.assertEqual(self.result[0]["timestamp"], dt.datetime(2019, 3, 2, 4, 0))
+        self.assertEqual(
+            self.result[0]["timestamp"],
+            dt.datetime(2019, 3, 2, 2, 0, tzinfo=dt.timezone.utc),
+        )
 
     def test_result_line_1(self):
         self.assertEqual(self.result[0]["line"], "2019-03-02 04:00;42.1;24.2")
 
     def test_result_timestamp_2(self):
-        self.assertEqual(self.result[1]["timestamp"], dt.datetime(2019, 3, 2, 5, 0))
+        self.assertEqual(
+            self.result[1]["timestamp"],
+            dt.datetime(2019, 3, 2, 3, 0, tzinfo=dt.timezone.utc),
+        )
 
     def test_result_line_2(self):
         self.assertEqual(self.result[1]["line"], "2019-03-02 05:00;43.1;25.2")
 
-    def test_called_fix_dst(self):
-        self.patched_fix_dst.assert_has_calls(
-            [call(dt.datetime(2019, 3, 2, 5, 0)), call(dt.datetime(2019, 3, 2, 4, 0))]
+    def test_called_get_datetime_with_correct_fold(self):
+        self.patched_get_datetime_with_correct_fold.assert_has_calls(
+            [
+                call(dt.datetime(2019, 3, 2, 5, 0, tzinfo=ZoneInfo("Etc/GMT-2"))),
+                call(dt.datetime(2019, 3, 2, 4, 0, tzinfo=ZoneInfo("Etc/GMT-2"))),
+            ]
         )

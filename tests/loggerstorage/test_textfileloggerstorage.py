@@ -3,6 +3,11 @@ import textwrap
 from collections import OrderedDict
 from unittest import TestCase
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 import numpy as np
 import pandas as pd
 from pyfakefs.fake_filesystem_unittest import Patcher
@@ -13,7 +18,9 @@ from loggertodb.meteologgerstorage import TextFileMeteologgerStorage
 
 class DummyTextFileMeteologgerStorage(TextFileMeteologgerStorage):
     def _extract_timestamp(self, line):
-        return dt.datetime.strptime(line[:16], "%Y-%m-%d %H:%M")
+        result = dt.datetime.strptime(line[:16], "%Y-%m-%d %H:%M")
+        result = result.replace(tzinfo=self.tzinfo)
+        return result
 
     def _get_item_from_line(self, line, seq):
         line_items = line.strip().split(",")[1:]
@@ -27,7 +34,12 @@ class CheckParametersTestCase(TestCase):
         expected_error_message = 'Parameter "fields" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
             DummyTextFileMeteologgerStorage(
-                {"station_id": 1334, "path": "irrelevant", "storage_format": "dummy"}
+                {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "dummy",
+                    "timezone": "Etc/GMT-2",
+                }
             )
 
     def test_raises_error_on_invalid_parameter(self):
@@ -40,6 +52,7 @@ class CheckParametersTestCase(TestCase):
                     "storage_format": "dummy",
                     "fields": "5, 6",
                     "hello": "world",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -50,6 +63,7 @@ class CheckParametersTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
             }
         )
@@ -63,6 +77,7 @@ class TimeseriesIdsTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "dummy",
                 "fields": "0, 5, 0, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
             }
         )
@@ -77,11 +92,12 @@ class ExtractValueAndFlagsTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
             }
         )
         self.record = {
-            "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+            "timestamp": dt.datetime(2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")),
             "line": "2019-02-28 17:30,42.2 MYFLAG1 MYFLAG2,24.3\n",
         }
 
@@ -104,6 +120,7 @@ class GetStorageTailTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
             }
         )
@@ -119,7 +136,7 @@ class GetStorageTailTestCase(TestCase):
                 ),
             )
             self.result = meteologger_storage._get_storage_tail(
-                dt.datetime(2019, 2, 28, 17, 20)
+                dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
             )
 
     def test_result(self):
@@ -127,11 +144,15 @@ class GetStorageTailTestCase(TestCase):
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 40, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:40,42.3,24.4\n",
                 },
             ],
@@ -189,25 +210,22 @@ class GetRecentDataWithAmbiguousHourTestCase(TestCase):
                 ),
             )
             self.result = meteologger_storage.get_recent_data(
-                5, dt.datetime(2018, 10, 27, 1, 0)
+                5, dt.datetime(2018, 10, 27, 1, 0, tzinfo=ZoneInfo("Etc/GMT"))
             )
 
     def test_result(self):
         v = np.arange(421, 436) / 10.0
         expected_values = np.concatenate((v, v))
         expected_flags = [""] * 30
-        expected_dates = np.concatenate(
-            (
-                pd.date_range(
-                    start=dt.datetime(2018, 10, 28, 1, 50),
-                    end=dt.datetime(2018, 10, 28, 4, 10),
-                    freq="10min",
-                ),
-                pd.date_range(
-                    start=dt.datetime(2019, 10, 27, 1, 50),
-                    end=dt.datetime(2019, 10, 27, 4, 10),
-                    freq="10min",
-                ),
+        expected_dates = pd.date_range(
+            start=dt.datetime(2018, 10, 27, 23, 50, tzinfo=dt.timezone.utc),
+            end=dt.datetime(2018, 10, 28, 2, 10, tzinfo=dt.timezone.utc),
+            freq="10min",
+        ).union(
+            pd.date_range(
+                start=dt.datetime(2019, 10, 26, 23, 50, tzinfo=dt.timezone.utc),
+                end=dt.datetime(2019, 10, 27, 2, 10, tzinfo=dt.timezone.utc),
+                freq="10min",
             )
         )
         expected_result = pd.DataFrame(
@@ -226,6 +244,7 @@ class IgnoreLinesTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "ignore_lines": "ignore( this)? line",
             }
@@ -245,7 +264,7 @@ class IgnoreLinesTestCase(TestCase):
                 ),
             )
             self.result = meteologger_storage._get_storage_tail(
-                dt.datetime(2019, 2, 28, 17, 20)
+                dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
             )
 
     def test_result(self):
@@ -253,11 +272,15 @@ class IgnoreLinesTestCase(TestCase):
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 40, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:40,42.3,24.4\n",
                 },
             ],
@@ -272,6 +295,7 @@ class EncodingTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "ignore_lines": "n' est pas",
                 "encoding": "iso-8859-1",
@@ -291,7 +315,7 @@ class EncodingTestCase(TestCase):
                 ),
             )
             self.result = meteologger_storage._get_storage_tail(
-                dt.datetime(2019, 2, 28, 17, 20)
+                dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
             )
 
     def test_result(self):
@@ -299,11 +323,15 @@ class EncodingTestCase(TestCase):
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 40, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:40,42.3,24.4\n",
                 },
             ],
@@ -321,6 +349,7 @@ class EncodingErrorsTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "dummy",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "ignore_lines": "n' est pas",
             }
@@ -339,7 +368,7 @@ class EncodingErrorsTestCase(TestCase):
                 ),
             )
             self.result = meteologger_storage._get_storage_tail(
-                dt.datetime(2019, 2, 28, 17, 20)
+                dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
             )
 
     def test_result(self):
@@ -347,11 +376,15 @@ class EncodingErrorsTestCase(TestCase):
             self.result,
             [
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 30),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
                 },
                 {
-                    "timestamp": dt.datetime(2019, 2, 28, 17, 40),
+                    "timestamp": dt.datetime(
+                        2019, 2, 28, 17, 40, tzinfo=ZoneInfo("Etc/GMT-2")
+                    ),
                     "line": "2019-02-28 17:40,42.3,24.4\n",
                 },
             ],

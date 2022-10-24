@@ -51,11 +51,16 @@ class Enhydris:
 
     def _get_ts_end_dates(self):
         station_id = self._meteologger_storage.station_id
-        start_of_time = dt.datetime(1700, 1, 1)
-        self._ts_end_dates = {
-            cts_id: self.client.get_ts_end_date(station_id, *cts_id) or start_of_time
-            for cts_id in self._composite_timeseries_ids
-        }
+        start_of_time = dt.datetime(1700, 1, 1, tzinfo=dt.timezone.utc)
+        utc = dt.timezone.utc
+        self._ts_end_dates = {}
+        for cts_id in self._composite_timeseries_ids:
+            e = self.client.get_ts_end_date(station_id, *cts_id, timezone="Etc/GMT")
+            assert e is None or e.tzinfo is None
+            if e:
+                self._ts_end_dates[cts_id] = e.replace(tzinfo=utc)
+            else:
+                self._ts_end_dates[cts_id] = start_of_time
 
     def _upload_all_new_data(self):
         station_id = self._meteologger_storage.station_id

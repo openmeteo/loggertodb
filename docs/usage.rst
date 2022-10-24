@@ -70,8 +70,9 @@ Configuration file examples
 The following instructs ``loggertodb`` to use the single data file
 :file:`zeno.data` and upload its data to ``openmeteo.org``; the first
 field of each line (after the date and time) will be uploaded to time
-series group 232, the second to 233, and so on. The last field of each
-line will not be uploaded (symbolized with the 0)::
+series group 232, the second to 233, and so on.  The last field of each
+line will not be uploaded (symbolized with the 0).  The time zone of the
+timestamps is 2 hours east of UTC::
 
     [General]
     loglevel = WARNING
@@ -84,15 +85,16 @@ line will not be uploaded (symbolized with the 0)::
     path = /var/local/openmeteo/logger_data_files/ntua/zeno.data
     storage_format = simple
     date_format = %y/%m/%d %H:%M:%S
+    timezone = Etc/GMT-2
     fields = 232,233,247,248,237,238,236,9141,5461,6659,9139,6661,240,6539,6541,230,234,0
 
 The following instructs ``loggertodb`` to use two data files (one for
 meteorological station PRASINOS, one for VILIA; these are just labels
 to make it easy for you to read the file; that are not used anywhere).
-While reading that each line's fields, the value "NAN" instead of a
+While reading each line's fields, the value "NAN" instead of a
 number will be interpreted as an empty (or missing, or null) value.
-The ``timezone`` parameter is used for daylight saving time
-adjustments (see `Daylight saving time`_)::
+The time zone of the timestamps changes because of daylight saving time
+(see `Daylight saving time`_)::
 
     [General]
     loglevel = WARNING
@@ -296,7 +298,22 @@ encoding
    .. _list of possible encodings: https://docs.python.org/3/library/codecs.html#standard-encodings
 
 timezone
-   See `Daylight saving time`_.
+   The time zone of the timestamps of the data. This is necessary to
+   know because Enhydris stores the timestamps in UTC, so if they are in
+   another time zone they need to be converted. The value of this
+   parameter is a name from the `Olson database`_ (see also `Wikipedia's
+   copy`_, which is handier than the official), such as
+   ``Europe/Athens``, but it can also be one the constant offset time
+   zones such as ``Etc/GMT`` or ``Etc/GMT-2``. If you use such a
+   constant offset time zone, beware that the sign is reverted:
+   ``Etc/GMT-2`` is 2 hours **east** of UTC.
+
+   While ``loggertodb`` will handle daylight saving time, it is
+   recommended to configure your loggers to use a constant offset time
+   zone. See `Daylight saving time`_ for more.
+
+.. _olson database: http://www.iana.org/time-zones
+.. _wikipedia's copy: http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 .. _wdat5_units:
 
@@ -482,25 +499,15 @@ ambiguous hours during the switch from DST, meaning that if an
 incredible storm occurs at that time, you will lose it. Insane but
 true.)
 
-In order to avoid insanity, Enhydris has a simple rule: all time stamps
-of any given time series must be in the same offset from UTC.  So you
-can store your time series in your local time, in UTC time, in the local
-time of the antipodal point, whatever you like; but it may not switch to
-DST. If you have a time series that switches to DST, you must convert it
-to a constant UTC offset before entering it to Enhydris.
-
-If you are unfortunate enough to have loggers that switch to DST, and
-are unable to change their configuration, ``loggertodb`` can attempt to
-convert it for you. The ``timezone`` parameter should be set to a string
-like "Europe/Athens"::
+Enhydris stores all timestamps in UTC so there's never any ambiguity and
+there's no switch to DST. The ``timezone`` parameter in the
+``loggertodb`` configuration file is necessary so that the timestamps
+are correctly converted to UTC.  If you are have loggers that switch to
+DST and are unable to change their configuration, ``loggertodb`` can
+attempt to convert it for you. In that case the ``timezone`` parameter
+should be set to a time zone that changes to DST, like "Europe/Athens"::
 
    timezone = Europe/Athens
-
-(The list of accepted time zones is that of the `Olson database`_; you
-may find `Wikipedia's copy`_ handy.)
-
-.. _olson database: http://www.iana.org/time-zones
-.. _wikipedia's copy: http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 ``loggertodb`` assumes that the time change occurs exactly when it is
 supposed to occur, not a few hours earlier or later. For the switch
@@ -511,8 +518,3 @@ correct thing; it will consider that the second occurence is after the
 switch and the first is before the switch. If according to the
 computer's clock the switch hasn't occurred yet, any references to the
 ambiguous hour are considered to have occurred before the switch.
-
-The ``timezone`` parameter is used only in order to know when the DST
-switches occur. The timestamp, after removing any DST, are entered as
-is. The time zone database field isn't checked for consistency, neither
-is any other conversion made.

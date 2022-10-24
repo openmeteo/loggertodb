@@ -15,6 +15,7 @@ class CheckParametersTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "delimiter": ",",
                 "date_format": "%Y-%m-%d %H:%M",
@@ -33,6 +34,7 @@ class ExtractTimestampTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "delimiter": ",",
                 "date_format": "%d/%m/%Y %H:%M",
@@ -46,7 +48,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 "ign1,ign2,28/2/2019 13:47,25.2,42.3\n"
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -55,7 +57,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 "ign1,ign2,28/2/2019,13:47,25.2,42.3\n"
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertTrue(self.meteologger_storage._separate_time)
 
@@ -70,7 +72,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 "ign1,ign2, 28/2/2019 13:47,25.2,42.3\n"
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -79,7 +81,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 "ign1,ign2,28/2/2019 13:47 ,25.2,42.3\n"
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -88,7 +90,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 'ign1,ign2,"28/2/2019 13:47",25.2,42.3\n'
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -97,7 +99,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 'ign1,ign2, "28/2/2019 13:47",25.2,42.3\n'
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -106,7 +108,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 'ign1,ign2,"28/2/2019 13:47" ,25.2,42.3\n'
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -115,7 +117,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 'ign1,ign2," 28/2/2019 13:47",25.2,42.3\n'
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -124,7 +126,7 @@ class ExtractTimestampTestCase(TestCase):
             self.meteologger_storage._extract_timestamp(
                 'ign1,ign2,"28/2/2019 13:47 ",25.2,42.3\n'
             ),
-            dt.datetime(2019, 2, 28, 13, 47),
+            dt.datetime(2019, 2, 28, 11, 47, tzinfo=dt.timezone.utc),
         )
         self.assertFalse(self.meteologger_storage._separate_time)
 
@@ -139,6 +141,7 @@ class GetItemFromLineTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "NULL",
                 "delimiter": ",",
                 "date_format": "%d/%m/%Y %H:%M",
@@ -186,6 +189,7 @@ class NullTestCase(TestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "null": "-6999",
                 "delimiter": ",",
                 "date_format": "%d/%m/%Y %H:%M",
@@ -230,6 +234,7 @@ class NullStrTestCase(NullTestCase):
                 "path": "/foo/bar",
                 "storage_format": "simple",
                 "fields": "5, 6",
+                "timezone": "Etc/GMT-2",
                 "nullstr": "-6999",
                 "delimiter": ",",
                 "date_format": "%d/%m/%Y %H:%M",

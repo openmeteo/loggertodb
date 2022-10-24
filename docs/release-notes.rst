@@ -2,6 +2,20 @@
 Release notes
 =============
 
+Version 3.0 (2022-12-05)
+========================
+
+Briefly, this version is timezone-aware.
+
+Enhydris 4.0 handles time zones better than 3.x, but it has some
+breaking changes in the API, namely that when uploading data the time
+zone must be specified. Accordingly, loggertodb 3.0 is compatible with
+Enhydris 4.0 and incompatible with previous Enhydris versions.
+
+In this loggertodb version, the ``timezone`` configuration parameter
+must always be specified, and it is used to interpret all timestamps
+(whereas in previous versions it was used only for DST changes).
+
 Version 2.2 (2021-01-13)
 ========================
 
@@ -10,7 +24,7 @@ no longer has a "raw" time series type, and instead has an "initial"
 time series type. (This update has occurred in an internal unnumbered
 Enhydris release that precedes the release of Enhydris 3).
 
-Changes in 2.0 microversions
+Changes in 2.2 microversions
 ----------------------------
 
 2.2.1 (2022-11-06)
@@ -18,7 +32,7 @@ Changes in 2.0 microversions
 
 - Bug fix: If an error occurs during data uploading, the error is
   correctly shown and logged (and the traceback also logged in DEBUG
-  level), whereas in 2.2 it crashed with an irrelevant message.
+  level), whereas in 2.2.0 it crashed with an irrelevant message.
 
 Version 2.1 (2020-11-17)
 ========================

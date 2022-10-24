@@ -3,6 +3,11 @@ import os
 from unittest import TestCase
 from unittest.mock import call, patch
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 from loggertodb.exceptions import ConfigurationError
 from loggertodb.meteologgerstorage import MeteologgerStorage_wdat5
 
@@ -14,6 +19,7 @@ class ConfigurationTestCase(TestCase):
                 "station_id": 1334,
                 "path": "irrelevant",
                 "storage_format": "simple",
+                "timezone": "Etc/GMT-2",
                 "outsidetemp": 1256,
                 "hioutsidetemp": 1257,
                 "rain": 1652,
@@ -26,6 +32,7 @@ class ConfigurationTestCase(TestCase):
                 "station_id": 1334,
                 "path": "irrelevant",
                 "storage_format": "wdat5",
+                "timezone": "Etc/GMT-2",
                 "outsidetemp": 1256,
                 "hioutsidetemp": 1257,
                 "rain": 1652,
@@ -40,6 +47,7 @@ class ConfigurationTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "temperature_unit": "C",
+                "timezone": "Etc/GMT-2",
             }
         )
 
@@ -52,6 +60,7 @@ class ConfigurationTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "simple",
                     "temperature_unit": "A",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -62,6 +71,7 @@ class ConfigurationTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "rain_unit": "mm",
+                "timezone": "Etc/GMT-2",
             }
         )
 
@@ -74,6 +84,7 @@ class ConfigurationTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "simple",
                     "rain_unit": "A",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -84,6 +95,7 @@ class ConfigurationTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "wind_speed_unit": "m/s",
+                "timezone": "Etc/GMT-2",
             }
         )
 
@@ -96,6 +108,7 @@ class ConfigurationTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "simple",
                     "wind_speed_unit": "A",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -106,6 +119,7 @@ class ConfigurationTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "pressure_unit": "hPa",
+                "timezone": "Etc/GMT-2",
             }
         )
 
@@ -118,6 +132,7 @@ class ConfigurationTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "simple",
                     "pressure_unit": "A",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -128,6 +143,7 @@ class ConfigurationTestCase(TestCase):
                 "path": "irrelevant",
                 "storage_format": "simple",
                 "matric_potential_unit": "centibar",
+                "timezone": "Etc/GMT-2",
             }
         )
 
@@ -140,6 +156,7 @@ class ConfigurationTestCase(TestCase):
                     "path": "irrelevant",
                     "storage_format": "simple",
                     "matric_potential_unit": "A",
+                    "timezone": "Etc/GMT-2",
                 }
             )
 
@@ -147,24 +164,26 @@ class ConfigurationTestCase(TestCase):
 class GetStorageTailTestCase(TestCase):
     @classmethod
     @patch(
-        "loggertodb.meteologgerstorage.MeteologgerStorage._fix_dst",
+        "loggertodb.meteologgerstorage.MeteologgerStorage"
+        "._get_datetime_with_correct_fold",
         side_effect=lambda x: x,
     )
     def setUpClass(cls, m):
-        cls.patched_fix_dst = m
+        cls.patched_get_datetime_with_correct_fold = m
         directory_of_this_file = os.path.dirname(os.path.abspath(__file__))
         meteologger_storage = MeteologgerStorage_wdat5(
             {
                 "station_id": 1334,
                 "path": os.path.join(directory_of_this_file, "wdat5_data"),
                 "storage_format": "wdat5",
+                "timezone": "Etc/GMT-2",
                 "outsidetemp": 1256,
                 "hioutsidetemp": 1257,
                 "rain": 1652,
             }
         )
         cls.result = meteologger_storage._get_storage_tail(
-            dt.datetime(2013, 12, 24, 22, 30)
+            dt.datetime(2013, 12, 24, 22, 30, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
 
     def test_length(self):
@@ -175,10 +194,16 @@ class GetStorageTailTestCase(TestCase):
         self.assertEqual(len(self.result), 1378)
 
     def test_first_timestamp(self):
-        self.assertEqual(self.result[0]["timestamp"], dt.datetime(2013, 12, 24, 22, 40))
+        self.assertEqual(
+            self.result[0]["timestamp"],
+            dt.datetime(2013, 12, 24, 22, 40, tzinfo=ZoneInfo("Etc/GMT-2")),
+        )
 
     def test_last_timestamp(self):
-        self.assertEqual(self.result[-1]["timestamp"], dt.datetime(2014, 1, 3, 12, 10))
+        self.assertEqual(
+            self.result[-1]["timestamp"],
+            dt.datetime(2014, 1, 3, 12, 10, tzinfo=ZoneInfo("Etc/GMT-2")),
+        )
 
     def test_first_outside_temp(self):
         self.assertAlmostEqual(self.result[0]["outsidetemp"], 8.7, places=1)
@@ -192,18 +217,22 @@ class GetStorageTailTestCase(TestCase):
     def test_last_hum(self):
         self.assertEqual(self.result[-1]["outsidehum"], 72)
 
-    def test_fix_dst_was_called_enough_times(self):
-        # ._fix_dst should have been called once for each December timestamp (31*144)
-        # plus two whole days in January (2*144) plus 73 intervals from 2014-01-03 00:10
-        # to 2014-01-03 12:10, total 4825.
-        self.assertEqual(len(self.patched_fix_dst.mock_calls), 4825)
-
-    def test_fix_dst_was_called_starting_with_first_date(self):
+    def test_get_datetime_with_correct_fold_was_called_enough_times(self):
+        # ._get_datetime_with_correct_fold should have been called once for each
+        # December timestamp (31*144) plus two whole days in January (2*144) plus 73
+        # intervals from 2014-01-03 00:10 to 2014-01-03 12:10, total 4825.
         self.assertEqual(
-            self.patched_fix_dst.mock_calls[0], call(dt.datetime(2013, 12, 1, 0, 10))
+            len(self.patched_get_datetime_with_correct_fold.mock_calls), 4825
         )
 
-    def test_fix_dst_was_called_ending_with_last_date(self):
+    def test_get_datetime_with_correct_fold_was_called_starting_with_first_date(self):
         self.assertEqual(
-            self.patched_fix_dst.mock_calls[-1], call(dt.datetime(2014, 1, 3, 12, 10))
+            self.patched_get_datetime_with_correct_fold.mock_calls[0],
+            call(dt.datetime(2013, 12, 1, 0, 10, tzinfo=ZoneInfo("Etc/GMT-2"))),
+        )
+
+    def test_get_datetime_with_correct_fold_was_called_ending_with_last_date(self):
+        self.assertEqual(
+            self.patched_get_datetime_with_correct_fold.mock_calls[-1],
+            call(dt.datetime(2014, 1, 3, 12, 10, tzinfo=ZoneInfo("Etc/GMT-2"))),
         )
