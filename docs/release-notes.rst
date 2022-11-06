@@ -10,6 +10,16 @@ no longer has a "raw" time series type, and instead has an "initial"
 time series type. (This update has occurred in an internal unnumbered
 Enhydris release that precedes the release of Enhydris 3).
 
+Changes in 2.0 microversions
+----------------------------
+
+2.2.1 (2022-11-06)
+^^^^^^^^^^^^^^^^^^
+
+- Bug fix: If an error occurs during data uploading, the error is
+  correctly shown and logged (and the traceback also logged in DEBUG
+  level), whereas in 2.2 it crashed with an irrelevant message.
+
 Version 2.1 (2020-11-17)
 ========================
 

@@ -55,13 +55,13 @@ class LoggerToDb:
             raise click.ClickException(str(e))
 
     def _process_stations(self):
-        for meteologger_storage in self.configuration.meteologger_storages:
+        config = self.configuration
+        for i, meteologger_storage in enumerate(config.meteologger_storages):
             try:
                 self.enhydris.upload(meteologger_storage)
             except LoggerToDbError as e:
-                msg = "Error while processing item {}: {}".format(
-                    meteologger_storage.section, str(e)
-                )
+                section = config.config.sections()[i + 1]
+                msg = f"Error while processing item {section}: {str(e)}"
                 sys.stderr.write(msg + "\n")
                 self.logging_system.logger.error(msg)
                 self.logging_system.logger.debug(traceback.format_exc())

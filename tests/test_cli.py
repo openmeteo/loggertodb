@@ -1,11 +1,13 @@
 import os
 import textwrap
+from tempfile import NamedTemporaryFile
 from unittest import TestCase
 from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from loggertodb import cli
+from loggertodb import LoggerToDbError, cli
+from loggertodb.cli import LoggerToDb
 
 
 class NonExistentConfigFileTestCase(TestCase):
@@ -192,3 +194,48 @@ class CorrectConfigurationWithLogFileTestCase(TestCase):
                 )
             self.result = runner.invoke(cli.main, ["loggertodb.conf"])
             self.assertTrue(os.path.exists("deleteme"))
+
+
+class UploadErrorTestCase(TestCase):
+    config = textwrap.dedent(
+        """\
+        [General]
+        base_url = https://example.com
+        auth_token = 123456789abcdef0123456789abcdef012345678
+
+        [My station]
+        storage_format = simple
+        station_id = 1334
+        path = .
+        fields = 1,2,3
+        """
+    )
+
+    @patch("loggertodb.cli.logging")
+    @patch("loggertodb.cli.sys.stderr.write")
+    @patch("loggertodb.cli.Enhydris")
+    def setUp(self, mock_enhydris, mock_stderr_write, mock_logging):
+        self.mock_enhydris = mock_enhydris
+        self.mock_stderr_write = mock_stderr_write
+        self.mock_logging = mock_logging
+        self.mock_enhydris.return_value.upload.side_effect = LoggerToDbError(
+            "hello world"
+        )
+        with NamedTemporaryFile("w") as tmpfile:
+            tmpfile.write(self.config)
+            tmpfile.seek(0)
+            LoggerToDb(tmpfile.name).run()
+
+    def test_writes_error_to_stderr(self):
+        self.mock_stderr_write.assert_called_with(
+            "Error while processing item My station: hello world\n"
+        )
+
+    def test_logs_error(self):
+        self.mock_logging.getLogger.return_value.error.assert_called_with(
+            "Error while processing item My station: hello world"
+        )
+
+    def test_logs_traceback(self):
+        arg = self.mock_logging.getLogger.return_value.debug.call_args.args[0]
+        self.assertTrue("Traceback" in arg)

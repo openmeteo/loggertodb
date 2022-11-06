@@ -11,7 +11,6 @@ with open("README.rst") as readme_file:
 requirements = [
     "Click>=7.0,<8",
     "iso8601",
-    "htimeseries>=1,<2",
     "simpletail",
     "enhydris-api-client>=2,<3",
 ]
