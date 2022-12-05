@@ -58,7 +58,7 @@ The first time:
     `pyinstaller bug`_).
  7. ``virtualenv ../venv``
  8. ``../venv/Scripts/pip install -e .``
- 9. ``../venv/Scripts/pip install pyinstaller``
+ 9. ``../venv/Scripts/pip install "pyinstaller<5"``
 
 .. _pyinstaller bug: https://github.com/pyinstaller/pyinstaller/issues/4064
 
