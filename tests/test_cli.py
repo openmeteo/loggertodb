@@ -222,10 +222,21 @@ class UploadErrorTestCase(TestCase):
         self.mock_enhydris.return_value.upload.side_effect = LoggerToDbError(
             "hello world"
         )
-        with NamedTemporaryFile("w") as tmpfile:
-            tmpfile.write(self.config)
-            tmpfile.seek(0)
+
+        # NamedTemporaryFile with delete=True is essentially broken on Windows,
+        # therefore we manually delete ourselves. See
+        # https://stackoverflow.com/questions/49868470/using-namedtemporaryfile
+        # for more information.
+        tmpfilename = None
+        try:
+            with NamedTemporaryFile("w", delete=False) as tmpfile:
+                tmpfile.write(self.config)
+                tmpfile.seek(0)
+                tmpfilename = tmpfile.name
             LoggerToDb(tmpfile.name).run()
+        finally:
+            if tmpfilename is not None:
+                os.remove(tmpfilename)
 
     def test_writes_error_to_stderr(self):
         self.mock_stderr_write.assert_called_with(

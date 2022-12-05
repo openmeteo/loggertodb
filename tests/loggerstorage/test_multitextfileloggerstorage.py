@@ -1,5 +1,4 @@
 import datetime as dt
-import os
 import textwrap
 
 try:
@@ -272,7 +271,7 @@ class BadFileOrder(TestCase):
         )
 
     def test_raises_value_error(self):
-        msg = rf"The order of timestamps in file \{os.sep}foo\{os.sep}bar1 is mixed up."
+        msg = r"The order of timestamps in file .foo.bar1 is mixed up."
         with self.assertRaisesRegex(ValueError, msg):
             self.meteologger_storage.get_recent_data(
                 5, dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
@@ -323,10 +322,7 @@ class FilesWithOverlap(TestCase):
         )
 
     def test_raises_value_error(self):
-        msg = (
-            rf"The timestamps in files \{os.sep}foo\{os.sep}bar1 and "
-            rf"\{os.sep}foo\{os.sep}bar2 overlap."
-        )
+        msg = r"The timestamps in files .foo.bar1 and .foo.bar2 overlap."
         with self.assertRaisesRegex(ValueError, msg):
             self.meteologger_storage.get_recent_data(
                 5, dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
@@ -364,7 +360,7 @@ class FileWithBadLine(TestCase):
         )
 
     def test_raises_error(self):
-        msg = rf'\{os.sep}foo\{os.sep}bar1: "Invalid line": Malformed line'
+        msg = r'.foo.bar1: "Invalid line": Malformed line'
         with self.assertRaisesRegex(MeteologgerStorageReadError, msg):
             self.meteologger_storage.get_recent_data(
                 5, dt.datetime(1700, 1, 1, 0, tzinfo=dt.timezone.utc)
