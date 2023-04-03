@@ -172,8 +172,16 @@ class GetItemFromLineTestCase(TestCase):
         self.assertTrue(math.isnan(r[0]))
         self.assertEqual(r[1], "")
 
-    def test_raises_error_on_invalid_number(self):
-        with self.assertRaises(ValueError):
+    def test_raises_correct_error_if_line_does_not_have_enough_items(self):
+        msg = "Line contains fewer than 3 items"
+        with self.assertRaisesRegex(MeteologgerStorageReadError, msg):
+            self.meteologger_storage._get_item_from_line(
+                "ign1,ign2,28/2/2019 13:47,25.2,42.3\n", 3
+            )
+
+    def test_raises_correct_error_on_invalid_number(self):
+        msg = "could not convert string to float: 'hello'"
+        with self.assertRaisesRegex(MeteologgerStorageReadError, msg):
             self.meteologger_storage._get_item_from_line(
                 "ign1,ign2,28/2/2019 13:47,hello,42.3\n", 1
             )
