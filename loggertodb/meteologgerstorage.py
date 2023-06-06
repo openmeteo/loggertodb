@@ -112,8 +112,10 @@ class MeteologgerStorage(ABC):
         }
 
         # Iterate through the storage tail and fill in the time series
+        filename = None
         try:
             for i, record in enumerate(storage_tail):
+                filename = record.get("filename")
                 for ts_id in self.timeseries_group_ids:
                     v, f = self._extract_value_and_flags(ts_id, record)
                     index[i] = np.datetime64(record["timestamp"])
@@ -121,7 +123,7 @@ class MeteologgerStorage(ABC):
                     data[ts_id][i, 1] = f
         except ValueError as e:
             message = "parsing error while trying to read values: " + str(e)
-            self._raise_error(record["line"], message)
+            self._raise_error(record["line"], message, filename)
 
         # Replace self._cached_data and self._after_timestamp, if any
         self._cached_data = {
@@ -183,8 +185,8 @@ class MeteologgerStorage(ABC):
             return False
         return bool(now.dst())
 
-    def _raise_error(self, line, msg):
-        filename = self.filename if hasattr(self, "filename") else self.path
+    def _raise_error(self, line, msg, filename=None):
+        filename = filename or getattr(self, "filename", self.path)
         errmessage = '{}: "{}": {}'.format(filename, line, msg)
         self.logger.error("Error while parsing, message: " + errmessage)
         raise MeteologgerStorageReadError(errmessage)
@@ -284,7 +286,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
                 if timestamp <= after_timestamp:
                     reached_after_timestamp = True
                     break
-                result.append({"timestamp": timestamp, "line": line})
+                result.append({"timestamp": timestamp, "line": line, "filename": filename})
 
         result.reverse()
         return (result, reached_after_timestamp)
