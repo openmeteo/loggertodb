@@ -134,12 +134,13 @@ specialized, each to a specific kind of meteologger storage.
       to re-extract the time series from storage. Therefore, for better
       performance, use the smallest *after_timestamp* first.
 
-   .. method:: _raise_error(line, msg)
+   .. method:: _raise_error(line, msg, filename=None)
 
       This is only meant to be used internally, i.e. called by
       subclasses whenever an error is found in a data file. The method
       raises an exception. *line* and *msg* are strings used in the
-      error message.
+      error message. *filename* is an optional parameter specifying the
+      name of the file where the error occurred.
 
    .. method:: _is_null(value)
 
