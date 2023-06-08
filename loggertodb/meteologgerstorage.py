@@ -496,7 +496,15 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
 
     def _get_item_from_line(self, line, seq):
         index = self.nfields_to_ignore + seq + (1 if self._separate_time else 0)
-        value = line.split(self.delimiter)[index].strip().strip('"').strip()
+        try:
+            value = line.split(self.delimiter)[index].strip().strip('"').strip()
+        except IndexError:
+            error_message = f"line {line} has fewer elements than expected."
+            if not self.delimiter:
+                error_message = "set the delimiter correctly."
+            error_message = error_message.replace("\n", "")
+            self.logger.error(error_message)
+            raise MeteologgerStorageReadError(error_message)
         if self._is_null(value):
             value = "NaN"
         return (float(value), "")
