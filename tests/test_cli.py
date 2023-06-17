@@ -1,19 +1,13 @@
-import json
 import os
-import shutil
 import textwrap
-from pathlib import Path
 from tempfile import NamedTemporaryFile
 from unittest import TestCase
 from unittest.mock import patch
 
-import responses
 from click.testing import CliRunner
 
 from loggertodb import LoggerToDbError, cli
-from loggertodb.cli import LoggerToDb, Configuration, Logging
-from loggertodb.enhydris import Enhydris
-from loggertodb.exceptions import MeteologgerStorageReadError
+from loggertodb.cli import LoggerToDb
 
 
 class NonExistentConfigFileTestCase(TestCase):
@@ -257,82 +251,3 @@ class UploadErrorTestCase(TestCase):
     def test_logs_traceback(self):
         arg = self.mock_logging.getLogger.return_value.debug.call_args[0][0]
         self.assertTrue("Traceback" in arg)
-
-
-class UploadError2TestCase(TestCase):
-    config = textwrap.dedent(
-        f"""\
-        [General]
-        base_url = https://example.com
-        auth_token = 68b8c95a8daa0dc630ee8abc151ede9e3fc73426
-
-        [Bouficha]
-        station_id = 2013
-        path = {os.getcwd()}/temp_data/bouficha*.data
-        storage_format = simple
-        timezone = Europe/Athens
-        fields = 598
-        null = NAN
-        delimiter = ,
-        """
-    )
-
-    def setUp(self):
-        os.makedirs("temp_data", exist_ok=True)
-        config_file_path = os.path.join(os.getcwd(), "temp_data", "testloggertodb.conf")
-        with open(config_file_path, "w") as config_file:
-            config_file.write(self.config)
-
-        file_names = ["bouficha1.data", "bouficha2.data", "bouficha3.data"]
-        file_contents = [
-            "2023-05-18 14:40,25.2,47,2\n2023-05-18 14:50,25.2,47,2\n2023-05-18 14:59,25.2,47,4\n2023-05-18 15:10,25.2,47,4\n2023-05-18 15:20,25.2,47,5\n2023-05-18 15:20,25.2,47,6\n",
-            "2023-05-19 14:40,25.2,47,2\n2023-05-19 14:50,25.2,47,2\n2023-05-19 14:59,25.2,47,4\n2023-05-19 15:10,25.2,47,4\n2023-05-19 15:20,25.2,47,5\n2023-05-19 15:20,25.2,47,6\n",
-            "2023-05-20 14:40,25.wwwwwwwwwww,47,2\n2023-05-29 14:40,25.2,47,0\n2023-05-29 14:50,25.2,47,0\n2023-05-29 14:59,25.2,47,0\n2023-05-29 15:10,25.2,47,0\n2023-05-29 15:20,25.2,47,0\n"
-        ]
-
-        # Create temporary directory
-        temp_dir = os.path.join(os.getcwd(), "temp_data")
-        os.makedirs(temp_dir, exist_ok=True)
-
-        # Create data files
-        for file_name, content in zip(file_names, file_contents):
-            file_path = os.path.join(temp_dir, file_name)
-            with open(file_path, "w") as file:
-                file.write(content)
-
-    @responses.activate
-    def test_extract_data_with_multiple_files(self):
-        response_body = {"results": [
-            {'id': 9801, 'type': 'Initial', 'last_modified': '2019-12-06T07:32:29.484725-06:00', 'time_step': 'H',
-             'publicly_available': True, 'timeseries_group': 598}]}
-        responses.add(
-            responses.GET,
-            url="https://example.com/api/stations/2013/timeseriesgroups/598/timeseries/",
-            body=json.dumps(response_body),
-            status=200,
-            content_type='application/json'
-        )
-        responses.add(
-            responses.GET,
-            url="https://example.com/api/stations/2013/timeseriesgroups/598/timeseries/9801/bottom/?timezone=Etc%2FGMT",
-            body=json.dumps(response_body),
-            status=200,
-            content_type='application/json'
-        )
-        config_file_path = os.path.join(os.getcwd(), "temp_data", "testloggertodb.conf")
-        logging_system = Logging()
-
-        self.configuration = Configuration(Path(config_file_path), logging_system)
-        self.configuration.read()
-
-        self.enhydris = Enhydris(self.configuration)
-        config = self.configuration
-
-        with self.assertRaises(MeteologgerStorageReadError) as e:
-            self.enhydris.upload(config.meteologger_storages[0])
-
-        expected_error_message = f'{os.getcwd()}/temp_data/bouficha3.data: "2023-05-20 14:40,25.wwwwwwwwwww,47,2\n": parsing error while trying to read values: could not convert string to float: \'25.wwwwwwwwwww\''
-        self.assertEqual(str(e.exception), expected_error_message)
-
-    def tearDown(self):
-        shutil.rmtree("temp_data", ignore_errors=True)

@@ -81,6 +81,7 @@ class GetStorageTailTestCase(TestCase):
                         2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
+                    "filename": "/foo/bar2",
                 }
             ],
         )
@@ -97,18 +98,21 @@ class GetStorageTailTestCase(TestCase):
                         2018, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2018-02-28 17:30,42.2,24.3\n",
+                    "filename": "/foo/bar1",
                 },
                 {
                     "timestamp": dt.datetime(
                         2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2019-02-28 17:20,42.1,24.2\n",
+                    "filename": "/foo/bar2",
                 },
                 {
                     "timestamp": dt.datetime(
                         2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
+                    "filename": "/foo/bar2",
                 },
             ],
         )
@@ -125,36 +129,42 @@ class GetStorageTailTestCase(TestCase):
                         2017, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2017-02-28 17:20,42.1,24.2\n",
+                    "filename": "/foo/bar3",
                 },
                 {
                     "timestamp": dt.datetime(
                         2017, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2017-02-28 17:30,42.2,24.3\n",
+                    "filename": "/foo/bar3",
                 },
                 {
                     "timestamp": dt.datetime(
                         2018, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2018-02-28 17:20,42.1,24.2\n",
+                    "filename": "/foo/bar1",
                 },
                 {
                     "timestamp": dt.datetime(
                         2018, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2018-02-28 17:30,42.2,24.3\n",
+                    "filename": "/foo/bar1",
                 },
                 {
                     "timestamp": dt.datetime(
                         2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2019-02-28 17:20,42.1,24.2\n",
+                    "filename": "/foo/bar2",
                 },
                 {
                     "timestamp": dt.datetime(
                         2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")
                     ),
                     "line": "2019-02-28 17:30,42.2,24.3\n",
+                    "filename": "/foo/bar2",
                 },
             ],
         )
