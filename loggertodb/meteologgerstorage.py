@@ -286,7 +286,9 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
                 if timestamp <= after_timestamp:
                     reached_after_timestamp = True
                     break
-                result.append({"timestamp": timestamp, "line": line, "filename": filename})
+                result.append(
+                    {"timestamp": timestamp, "line": line, "filename": filename}
+                )
 
         result.reverse()
         return (result, reached_after_timestamp)
