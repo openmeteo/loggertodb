@@ -10,11 +10,12 @@ CompositeTimeseriesId = namedtuple(
 
 
 class Enhydris:
-    def __init__(self, configuration):
+    def __init__(self, configuration, logger):
         self.base_url = configuration.base_url
         self.auth_token = configuration.auth_token
         self.max_records = configuration.max_records
         self.client = EnhydrisApiClient(self.base_url, self.auth_token)
+        self.logger = logger
 
     def upload(self, meteologger_storage):
         self._meteologger_storage = meteologger_storage
@@ -70,6 +71,15 @@ class Enhydris:
             new_data = self._meteologger_storage.get_recent_data(
                 cts_id.timeseries_group_id, ts_end_date
             )
-            if len(new_data):
+            nrecords = len(new_data)
+            if nrecords:
                 new_data = new_data.iloc[: self.max_records]
+                self.logger.info(
+                    f"Timeseries group {cts_id.timeseries_group_id}: "
+                    f"uploading {len(new_data)} of {nrecords} new records"
+                )
                 self.client.post_tsdata(station_id, *cts_id, HTimeseries(new_data))
+            else:
+                self.logger.info(
+                    f"Timeseries group {cts_id.timeseries_group_id}: no new records"
+                )

@@ -13,7 +13,7 @@ class UploadTestCase(TestCase):
     def setUp(self, mock_EnhydrisApiClient):
         self.EnhydrisApiClient = mock_EnhydrisApiClient
         self.MeteologgerStorage = MagicMock()
-        self.enhydris = Enhydris(MagicMock())
+        self.enhydris = Enhydris(MagicMock(), MagicMock())
 
     def _configure_EnhydrisApiClient(self, attribute, value):
         self.EnhydrisApiClient.configure_mock(**{f"return_value.{attribute}": value})
@@ -141,7 +141,7 @@ class MaxRecordsTestCase(TestCase):
     def setUp(self, mock_EnhydrisApiClient):
         self.EnhydrisApiClient = mock_EnhydrisApiClient
         self.MeteologgerStorage = MagicMock()
-        self.enhydris = Enhydris(MagicMock())
+        self.enhydris = Enhydris(MagicMock(), MagicMock())
 
     def _configure_MeteologgerStorage(self, attribute, value):
         self.MeteologgerStorage.configure_mock(**{f"return_value.{attribute}": value})

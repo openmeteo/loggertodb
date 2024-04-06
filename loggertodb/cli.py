@@ -46,7 +46,7 @@ class LoggerToDb:
             self.configuration.read()
             self.logging_system.setup_logger(self.configuration)
             self.logging_system.log_start_of_execution()
-            self.enhydris = Enhydris(self.configuration)
+            self.enhydris = Enhydris(self.configuration, self.logging_system.logger)
             self._process_stations()
             self.logging_system.log_end_of_execution()
         except Exception as e:
@@ -57,10 +57,12 @@ class LoggerToDb:
     def _process_stations(self):
         config = self.configuration
         for i, meteologger_storage in enumerate(config.meteologger_storages):
+            section = config.config.sections()[i + 1]
             try:
+                self.logging_system.logger.info(f"*** Processing item {section}")
                 self.enhydris.upload(meteologger_storage)
+                self.logging_system.logger.info(f"Finished item {section}")
             except LoggerToDbError as e:
-                section = config.config.sections()[i + 1]
                 msg = f"Error while processing item {section}: {str(e)}"
                 sys.stderr.write(msg + "\n")
                 self.logging_system.logger.error(msg)
@@ -80,7 +82,9 @@ class Logging:
             self.logger.addHandler(logging.FileHandler(configuration.logfile))
 
     def log_start_of_execution(self):
-        self.logger.info("Starting loggertodb, " + dt.datetime.today().isoformat())
+        self.logger.info(
+            f"****** Starting loggertodb, {dt.datetime.today().isoformat()}"
+        )
 
     def log_end_of_execution(self):
         self.logger.info("Finished loggertodb, " + dt.datetime.today().isoformat())
