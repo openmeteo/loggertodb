@@ -501,13 +501,15 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
     def _get_item_from_line(self, line, seq):
         index = self.nfields_to_ignore + seq + (1 if self._separate_time else 0)
         try:
-            value = line.split(self.delimiter)[index].strip().strip('"').strip()
+            item = line.split(self.delimiter)[index].strip().strip('"').strip()
         except IndexError:
             self._raise_error(line, f"Line contains fewer than {seq} items")
+        value, _, flags = item.partition(" ")
+        flags = flags.strip()
         if self._is_null(value):
             value = "NaN"
         try:
-            return (float(value), "")
+            return (float(value), flags)
         except ValueError as e:
             self._raise_error(line, str(e))
 

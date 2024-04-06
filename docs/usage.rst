@@ -352,16 +352,22 @@ simple
    joined with a space to form the date/time string.  The field
    delimiter is white space, unless the ``delimiter`` parameter is
    specified. The date and/or time and the values can optionally be
-   enclosed in double quotation marks. The format of the date and time
-   is specified by the ``date_format`` parameter (enclosing quotation
-   marks are removed before parsing; also if the date and time are
-   different fields, they are joined together with a space before
-   being parsed).  If ``date_format`` is not specified, then the date
-   and time are considered to be in ISO8601 format, optionally using a
-   a space instead of ``T`` as the date/time separator, and ignoring
-   any seconds. If ``date_format`` is specified, it must include a
-   second specifier if the times contain seconds, but these seconds
-   are actually subsequently ignored.
+   enclosed in double quotation marks.
+
+   The format of the date and time is specified by the ``date_format``
+   parameter (enclosing quotation marks are removed before parsing; also
+   if the date and time are different fields, they are joined together
+   with a space before being parsed).  If ``date_format`` is not
+   specified, then the date and time are considered to be in ISO8601
+   format, optionally using a a space instead of ``T`` as the date/time
+   separator, and ignoring any seconds. If ``date_format`` is specified,
+   it must include a second specifier if the times contain seconds, but
+   these seconds are actually subsequently ignored.
+
+   The values may be followed by a space and a string, which is treated
+   as is as the flags; for example, ``42.3 important flags`` is a value
+   of ``42.3`` with flags ``important flags``. Leading and trailing
+   white space is stripped from the flags string.
 
    The ``nfields_to_ignore`` parameter can be used to ignore a number of
    fields in the beginning of each line; this is useful in some formats

@@ -165,6 +165,13 @@ class GetItemFromLineTestCase(TestCase):
         self.assertAlmostEqual(r[0], 42.3)
         self.assertEqual(r[1], "")
 
+    def test_get_item_with_flags(self):
+        r = self.meteologger_storage._get_item_from_line(
+            "ign1,ign2,28/2/2019 13:47,25.2,42.3  important flags  \n", 2
+        )
+        self.assertAlmostEqual(r[0], 42.3)
+        self.assertEqual(r[1], "important flags")
+
     def test_get_null_item(self):
         r = self.meteologger_storage._get_item_from_line(
             "ign1,ign2,28/2/2019 13:47,NULL,42.3\n", 1
