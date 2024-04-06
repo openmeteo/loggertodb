@@ -66,7 +66,7 @@ class MeteologgerStorage(ABC):
         return self._cached_data[ts_group_id].loc[from_timestamp:]
 
     def _check_monotonic(self, index):
-        if index.is_monotonic:
+        if index.is_monotonic_increasing:
             return
         else:
             self._raise_monotonic_exception(index)
