@@ -104,6 +104,12 @@ class Configuration:
         self.auth_token = self.config.get("General", "auth_token")
         self.logfile = self.config.get("General", "logfile", fallback="")
         self.loglevel = self.config.get("General", "loglevel", fallback="warning")
+        try:
+            self.max_records = self.config.getint(
+                "General", "max_records", fallback=10000
+            )
+        except ValueError:
+            raise WrongValueError("Wrong max_records: must be an integer")
         log_levels = ("ERROR", "WARNING", "INFO", "DEBUG")
         if self.loglevel.upper() not in log_levels:
             raise WrongValueError("loglevel must be one of " + ", ".join(log_levels))

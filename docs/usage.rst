@@ -214,6 +214,15 @@ auth_token
    Obviously the user to whom the token corresponds must have write
    permissions for all time series that will be uploaded.
 
+max_records
+   The maximum time series length, in records, ``loggertodb`` will
+   upload in one run. This applies individually to each uploaded time
+   series. If there are more than this number of records to upload, only
+   the first ``max_records`` are uploaded; the next will be uploaded in
+   a subsequent run. This helps ease the load on the server, because
+   attempting to upload a million records in a single request would
+   create problems. The default is 10,000.
+
 File parameters
 ---------------
 

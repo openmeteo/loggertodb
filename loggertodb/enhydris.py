@@ -13,6 +13,7 @@ class Enhydris:
     def __init__(self, configuration):
         self.base_url = configuration.base_url
         self.auth_token = configuration.auth_token
+        self.max_records = configuration.max_records
         self.client = EnhydrisApiClient(self.base_url, self.auth_token)
 
     def upload(self, meteologger_storage):
@@ -70,4 +71,5 @@ class Enhydris:
                 cts_id.timeseries_group_id, ts_end_date
             )
             if len(new_data):
+                new_data = new_data.iloc[: self.max_records]
                 self.client.post_tsdata(station_id, *cts_id, HTimeseries(new_data))

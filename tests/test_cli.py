@@ -122,6 +122,31 @@ class ConfigurationWithUnsupportedFormatTestCase(TestCase):
         self.assertIn("Unsupported format 'unsupported'", self.result.stderr)
 
 
+class ConfigurationWithWrongMaxRecordsTestCase(TestCase):
+    @patch("loggertodb.cli.Enhydris")
+    def setUp(self, mock_enhydris):
+        runner = CliRunner(mix_stderr=False)
+        with runner.isolated_filesystem():
+            with open("loggertodb.conf", "w") as f:
+                f.write(
+                    textwrap.dedent(
+                        """\
+                        [General]
+                        base_url = https://example.com
+                        auth_token = 123456789abcdef0123456789abcdef012345678
+                        max_records = hello
+                        """
+                    )
+                )
+            self.result = runner.invoke(cli.main, ["loggertodb.conf"])
+
+    def test_exit_status(self):
+        self.assertEqual(self.result.exit_code, 1)
+
+    def test_error_message(self):
+        self.assertIn("Wrong max_records: must be an integer", self.result.stderr)
+
+
 class CorrectConfigurationTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
