@@ -22,11 +22,12 @@ pyodbc = None
 
 
 class MeteologgerStorage(ABC):
-    def __init__(self, parameters, logger=None):
+    def __init__(self, parameters, *, max_records=10000, logger=None):
         self._reset_ambiguous_hour_data()
         self.__check_parameters(parameters)
         self.station_id = int(parameters["station_id"])
         self.path = parameters["path"]
+        self.max_records = max_records
         self.timezone = parameters["timezone"]
         self.tzinfo = ZoneInfo(self.timezone)
         self.logger = logger
@@ -99,6 +100,7 @@ class MeteologgerStorage(ABC):
         )
         storage_tail = self._get_storage_tail(after_timestamp)
         self.logger.info("{} new lines".format(len(storage_tail)))
+        storage_tail = storage_tail[: self.max_records]
         if len(storage_tail) > 0:
             self.logger.info(
                 "First new date: {}".format(storage_tail[0]["timestamp"].isoformat())
@@ -212,8 +214,8 @@ class MeteologgerStorage(ABC):
 
 
 class TextFileMeteologgerStorage(MeteologgerStorage):
-    def __init__(self, parameters, logger=None):
-        super().__init__(parameters, logger=logger)
+    def __init__(self, parameters, *, max_records=10000, logger=None):
+        super().__init__(parameters, max_records=max_records, logger=logger)
         self.fields = [int(x) for x in parameters.get("fields", "").split(",") if x]
         self.subset_identifiers = parameters.get("subset_identifiers", "")
         self.delimiter = parameters.get("delimiter", None)
@@ -633,8 +635,8 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
     def timeseries_group_ids(self):
         return {self.variables[lab] for lab in self.variables if self.variables[lab]}
 
-    def __init__(self, parameters, logger=None):
-        super().__init__(parameters, logger)
+    def __init__(self, parameters, *, max_records=10000, logger=None):
+        super().__init__(parameters, max_records=max_records, logger=logger)
 
         self.variables = {}
         for label in self.variables_labels:
@@ -838,8 +840,8 @@ class MeteologgerStorage_odbc(MeteologgerStorage_simple):
     def get_optional_parameters(self):
         return super().get_optional_parameters() | {"date_format", "decimal_separator"}
 
-    def __init__(self, parameters, logger=None):
-        super().__init__(parameters, logger)
+    def __init__(self, parameters, *, max_records=10000, logger=None):
+        super().__init__(parameters, max_records=max_records, logger=logger)
         self.table = parameters.get("table", "")
         self.date_sql = parameters.get("date_sql", "")
         self.data_columns = parameters.get("data_columns", "").split(",")

@@ -76,7 +76,7 @@ class Enhydris:
                 new_data = new_data.iloc[: self.max_records]
                 self.logger.info(
                     f"Timeseries group {cts_id.timeseries_group_id}: "
-                    f"uploading {len(new_data)} of {nrecords} new records"
+                    f"uploading {len(new_data)} new records"
                 )
                 self.client.post_tsdata(station_id, *cts_id, HTimeseries(new_data))
             else:

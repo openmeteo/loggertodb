@@ -129,7 +129,11 @@ class Configuration:
                 raise UnsupportedFormat(section["storage_format"])
             klass = getattr(meteologgerstorage, klassname)
             self.meteologger_storages.append(
-                klass(section, logger=self.logging_system.logger)
+                klass(
+                    section,
+                    max_records=self.max_records,
+                    logger=self.logging_system.logger,
+                )
             )
 
 
