@@ -2,6 +2,20 @@
 Release notes
 =============
 
+Dev
+===
+
+New features:
+
+- The "simple" format can now include flags.
+- A ``max_records`` parameter, by default 10,000, has been added, to limit
+  the size of uploaded time series.
+
+Minor improvements:
+
+- A pandas FutureWarning has been removed.
+- Added some more log messages at the "info" level.
+
 Version 3.0 (2022-12-05)
 ========================
 
