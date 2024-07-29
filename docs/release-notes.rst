@@ -2,14 +2,20 @@
 Release notes
 =============
 
-Dev
-===
+Version 3.1 (2024-07-29)
+========================
 
 New features:
 
 - The "simple" format can now include flags.
 - A ``max_records`` parameter, by default 10,000, has been added, to limit
   the size of uploaded time series.
+
+Bug fixes:
+
+- Fixed error when a line had insufficient items.
+- Fixed error message where, in case of error, a random filename instead
+  of the correct filename would be shown in multi-file format.
 
 Minor improvements:
 
