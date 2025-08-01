@@ -12,7 +12,7 @@ from loggertodb.cli import LoggerToDb
 
 class NonExistentConfigFileTestCase(TestCase):
     def setUp(self):
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         self.result = runner.invoke(cli.main, ["nonexistent.conf"])
 
     def test_exit_status(self):
@@ -26,7 +26,7 @@ class NonExistentConfigFileTestCase(TestCase):
 
 class MissingBaseUrlTestCase(TestCase):
     def setUp(self):
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(
@@ -48,7 +48,7 @@ class MissingBaseUrlTestCase(TestCase):
 
 class NonExistentLogLevelTestCase(TestCase):
     def setUp(self):
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(
@@ -74,7 +74,7 @@ class NonExistentLogLevelTestCase(TestCase):
 
 class ConfigurationWithNoMeteologgersTestCase(TestCase):
     def setUp(self):
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(
@@ -98,7 +98,7 @@ class ConfigurationWithNoMeteologgersTestCase(TestCase):
 class ConfigurationWithUnsupportedFormatTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
     def setUp(self, mock_enhydris):
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(
@@ -125,7 +125,7 @@ class ConfigurationWithUnsupportedFormatTestCase(TestCase):
 class ConfigurationWithWrongMaxRecordsTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
     def setUp(self, mock_enhydris):
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(
@@ -153,7 +153,7 @@ class CorrectConfigurationTestCase(TestCase):
     def setUp(self, mock_meteologgerstorage, mock_enhydris):
         self.mock_meteologgerstorage = mock_meteologgerstorage
         self.mock_enhydris = mock_enhydris
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(
@@ -198,7 +198,7 @@ class CorrectConfigurationWithLogFileTestCase(TestCase):
     def test_creates_log_file(self, *args):
         self.mock_meteologgerstorage = args[0]
         self.mock_enhydris = args[1]
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
                 f.write(

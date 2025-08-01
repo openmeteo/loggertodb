@@ -1,11 +1,7 @@
 import datetime as dt
 from unittest import TestCase
 from unittest.mock import call, patch
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo
 
 from loggertodb.exceptions import ConfigurationError
 from loggertodb.meteologgerstorage import MeteologgerStorage_odbc

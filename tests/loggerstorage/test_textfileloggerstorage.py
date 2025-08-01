@@ -2,11 +2,7 @@ import datetime as dt
 import textwrap
 from collections import OrderedDict
 from unittest import TestCase
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -235,6 +231,7 @@ class GetRecentDataWithAmbiguousHourTestCase(TestCase):
             index=expected_dates,
             dtype=object,
         )
+        expected_result.index = expected_result.index.astype("datetime64[s, UTC]")
         pd.testing.assert_frame_equal(self.result, expected_result)
 
 

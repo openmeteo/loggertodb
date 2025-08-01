@@ -1,10 +1,6 @@
 import datetime as dt
 import textwrap
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo
 
 from pyfakefs.fake_filesystem_unittest import TestCase
 

@@ -160,7 +160,7 @@ class MaxRecordsTestCase(TestCase):
 
         df = pd.DataFrame(
             {"value": [10, 20, 30]},
-            pd.date_range("2022-01-01", periods=3, freq="D"),
+            pd.date_range("2022-01-01", periods=3, freq="D", tz=dt.timezone.utc),
         )
         self._configure_MeteologgerStorage("get_recent_data.side_effect", [df])
 

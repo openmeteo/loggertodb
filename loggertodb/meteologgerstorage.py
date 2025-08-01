@@ -5,11 +5,7 @@ import re
 import struct
 from abc import ABC, abstractmethod
 from glob import glob
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo
 
 import iso8601
 import numpy as np
@@ -107,7 +103,7 @@ class MeteologgerStorage(ABC):
             )
 
         # Start with empty time series
-        index = np.empty(len(storage_tail), dtype="datetime64[s]")
+        index = []
         data = {
             ts_id: np.empty((len(storage_tail), 2), dtype=object)
             for ts_id in self.timeseries_group_ids
@@ -118,9 +114,9 @@ class MeteologgerStorage(ABC):
         try:
             for i, record in enumerate(storage_tail):
                 filename = record.get("filename")
+                index.append(record["timestamp"])
                 for ts_id in self.timeseries_group_ids:
                     v, f = self._extract_value_and_flags(ts_id, record)
-                    index[i] = np.datetime64(record["timestamp"])
                     data[ts_id][i, 0] = v
                     data[ts_id][i, 1] = f
         except ValueError as e:
@@ -131,7 +127,7 @@ class MeteologgerStorage(ABC):
         self._cached_data = {
             tsg_id: pd.DataFrame(
                 columns=["value", "flags"],
-                index=pd.DatetimeIndex(index, tz=dt.timezone.utc),
+                index=pd.DatetimeIndex(index, dtype="datetime64[s, UTC]"),
                 data=data[tsg_id],
             )
             for tsg_id in self.timeseries_group_ids

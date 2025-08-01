@@ -2,11 +2,7 @@ import datetime as dt
 from collections import OrderedDict
 from unittest import TestCase
 from unittest.mock import patch
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -106,6 +102,7 @@ class MeteologgerStorageGetRecentDataTestCase(TestCase):
             ],
             dtype=object,
         )
+        expected_result.index = expected_result.index.astype("datetime64[s, UTC]")
         pd.testing.assert_frame_equal(self.result, expected_result)
 
     def test_cached_return_value(self):
@@ -120,6 +117,7 @@ class MeteologgerStorageGetRecentDataTestCase(TestCase):
             index=[dt.datetime(2019, 2, 27, 10, 54, tzinfo=dt.timezone.utc)],
             dtype=object,
         )
+        expected_result.index = expected_result.index.astype("datetime64[s, UTC]")
         pd.testing.assert_frame_equal(second_result, expected_result)
 
 

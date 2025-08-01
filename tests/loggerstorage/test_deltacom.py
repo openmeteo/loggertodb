@@ -2,11 +2,7 @@ import datetime as dt
 import logging
 import math
 from unittest import TestCase
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo
 
 from loggertodb.exceptions import MeteologgerStorageReadError
 from loggertodb.meteologgerstorage import MeteologgerStorage_deltacom
