@@ -1,16 +1,4 @@
-import os
-import re
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
-
-def get_version():
-    scriptdir = os.path.dirname(os.path.abspath(__file__))
-    init_py_path = os.path.join(scriptdir, "..", "loggertodb", "__init__.py")
-    with open(init_py_path) as f:
-        return re.search(r'^__version__ = "(.*?)"$', f.read(), re.MULTILINE).group(1)
-
+from setuptools_scm import get_version
 
 extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode"]
 templates_path = ["_templates"]
@@ -19,7 +7,7 @@ master_doc = "index"
 project = "loggertodb"
 copyright = "2004-2020 various entities"
 author = "Antonis Christofides"
-version = get_version()
+version = get_version(root="..")
 release = version
 language = None
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]

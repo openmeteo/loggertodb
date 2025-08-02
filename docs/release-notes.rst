@@ -2,6 +2,17 @@
 Release notes
 =============
 
+Version 4.0 (2025-08-04)
+========================
+
+This version does not have any new features or changes; there are only
+build changes. We have moved from ``setup.py`` to ``pyproject.toml``
+and we are furthermore using ``setuptools-scm``. We have stopped
+supporting unsupported Python and Windows versions, and therefore
+running ``loggertodb`` on Windows 7 is no longer an option. We have
+added a GitHub action to automatically build a Windows executable
+upon publishing a new release.
+
 Version 3.1 (2024-07-29)
 ========================
 

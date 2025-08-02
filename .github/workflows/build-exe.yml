@@ -1,0 +1,45 @@
+name: Build Windows executable
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          pip install "pyinstaller>=6.14,<7"
+
+      - name: Build EXE
+        run: |
+          pyinstaller --onefile --paths=. --name=loggertodb-${{ github.ref_name }} bin/loggertodb-windows
+
+      - name: Upload artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/loggertodb-${{ github.ref_name }}.exe
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/loggertodb-${{ github.ref_name }}.exe
