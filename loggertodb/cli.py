@@ -7,9 +7,9 @@ import traceback
 import click
 
 from . import meteologgerstorage
+from ._version import __version__
 from .enhydris import Enhydris
 from .exceptions import LoggerToDbError
-from ._version import __version__
 from .upgrade import ConfigFile
 
 
