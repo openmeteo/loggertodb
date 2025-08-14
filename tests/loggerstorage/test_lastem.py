@@ -1,3 +1,4 @@
+import configparser
 import datetime as dt
 import logging
 import math
@@ -9,53 +10,66 @@ from loggertodb.meteologgerstorage import MeteologgerStorage_lastem
 
 class CheckParametersTestCase(TestCase):
     def test_raises_error_on_subset_identifiers_missing(self):
-        expected_error_message = 'Parameter "subset_identifiers" is required'
-        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            MeteologgerStorage_lastem(
-                {
+        cfg = configparser.ConfigParser()
+        cfg.read_dict(
+            {
+                "mystation": {
                     "station_id": 1334,
                     "path": "irrelevant",
                     "storage_format": "dummy",
                     "fields": "5, 6",
                     "timezone": "Etc/GMT-2",
                 }
-            )
-
-    def test_accepts_allowed_optional_parameters(self):
-        MeteologgerStorage_lastem(
-            {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "subset_identifiers": "18,19,20",
-                "delimiter": ";",
-                "decimal_separator": ",",
-                "date_format": "%Y-%m-%d %H:%M",
             }
         )
+        expected_error_message = 'Parameter "subset_identifiers" is required'
+        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
+            MeteologgerStorage_lastem(cfg["mystation"])
+
+    def test_accepts_allowed_optional_parameters(self):
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "subset_identifiers": "18,19,20",
+                    "delimiter": ";",
+                    "decimal_separator": ",",
+                    "date_format": "%Y-%m-%d %H:%M",
+                }
+            }
+        )
+        MeteologgerStorage_lastem(cfg["mystation"])
 
 
 class ExtractTimestampTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_lastem(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "null": "NULL",
-                "timezone": "Etc/GMT-2",
-                "subset_identifiers": "18,19,20",
-                "delimiter": ";",
-                "decimal_separator": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "null": "NULL",
+                    "timezone": "Etc/GMT-2",
+                    "subset_identifiers": "18,19,20",
+                    "delimiter": ";",
+                    "decimal_separator": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                }
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_lastem(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_extracts_timestamp(self):
@@ -77,20 +91,25 @@ class GetItemFromLineTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_lastem(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "subset_identifiers": "18,19,20",
-                "delimiter": ";",
-                "decimal_separator": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "subset_identifiers": "18,19,20",
+                    "delimiter": ";",
+                    "decimal_separator": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                }
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_lastem(
+            cfg["mystation"], logger=dummy_logger
         )
         self.meteologger_storage._separate_time = False
 
@@ -126,20 +145,25 @@ class SubsetIdentifiersMatchTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_lastem(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "subset_identifiers": "18,19,20",
-                "delimiter": ";",
-                "decimal_separator": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "subset_identifiers": "18,19,20",
+                    "delimiter": ";",
+                    "decimal_separator": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_lastem(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_matches(self):

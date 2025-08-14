@@ -48,9 +48,6 @@ Changelog = "https://github.com/openmeteo/loggertodb/blob/master/docs/release-no
 exclude = ["docs"]
 max-line-length = 88
 
-[tool.setuptools]
-package-dir = {"" = "loggertodb"}
-
 [tool.setuptools_scm]
 write_to = "loggertodb/_version.py"
 

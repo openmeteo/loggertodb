@@ -1,3 +1,4 @@
+import configparser
 import datetime as dt
 import logging
 import math
@@ -9,38 +10,47 @@ from loggertodb.meteologgerstorage import MeteologgerStorage_simple
 
 class CheckParametersTestCase(TestCase):
     def test_accepts_allowed_optional_parameters(self):
-        MeteologgerStorage_simple(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "delimiter": ",",
-                "date_format": "%Y-%m-%d %H:%M",
-                "nfields_to_ignore": 2,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "delimiter": ",",
+                    "date_format": "%Y-%m-%d %H:%M",
+                    "nfields_to_ignore": 2,
+                }
             }
         )
+        MeteologgerStorage_simple(cfg["mystation"])
 
 
 class ExtractTimestampTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_simple(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "delimiter": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-                "nfields_to_ignore": 2,
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "delimiter": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                    "nfields_to_ignore": 2,
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_simple(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_extracts_timestamp_with_time_included(self):
@@ -135,19 +145,24 @@ class GetItemFromLineTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_simple(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "delimiter": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-                "nfields_to_ignore": 2,
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "delimiter": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                    "nfields_to_ignore": 2,
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_simple(
+            cfg["mystation"], logger=dummy_logger
         )
         self.meteologger_storage._separate_time = False
 
@@ -198,19 +213,24 @@ class NullTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_simple(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "-6999",
-                "delimiter": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-                "nfields_to_ignore": 2,
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "-6999",
+                    "delimiter": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                    "nfields_to_ignore": 2,
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_simple(
+            cfg["mystation"], logger=dummy_logger
         )
         self.meteologger_storage._separate_time = False
 
@@ -243,18 +263,23 @@ class NullStrTestCase(NullTestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_simple(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "simple",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "nullstr": "-6999",
-                "delimiter": ",",
-                "date_format": "%d/%m/%Y %H:%M",
-                "nfields_to_ignore": 2,
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "nullstr": "-6999",
+                    "delimiter": ",",
+                    "date_format": "%d/%m/%Y %H:%M",
+                    "nfields_to_ignore": 2,
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_simple(
+            cfg["mystation"], logger=dummy_logger
         )
         self.meteologger_storage._separate_time = False

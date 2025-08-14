@@ -1,3 +1,4 @@
+import configparser
 import datetime as dt
 from unittest import TestCase
 from unittest.mock import call, patch
@@ -11,32 +12,40 @@ class ConfigurationTestCase(TestCase):
     def test_raises_error_on_table_missing(self):
         expected_error_message = 'Parameter "table" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            MeteologgerStorage_odbc(
+            cfg = configparser.ConfigParser(interpolation=None)
+            cfg.read_dict(
                 {
-                    "station_id": 1334,
-                    "path": "irrelevant",
-                    "storage_format": "odbc",
-                    "fields": "5, 6",
-                    "date_sql": "irrelevant",
-                    "data_columns": "irrelevant",
-                    "timezone": "Etc/GMT-2",
+                    "mystation": {
+                        "station_id": 1334,
+                        "path": "irrelevant",
+                        "storage_format": "odbc",
+                        "fields": "5, 6",
+                        "date_sql": "irrelevant",
+                        "data_columns": "irrelevant",
+                        "timezone": "Etc/GMT-2",
+                    }
                 }
             )
+            MeteologgerStorage_odbc(cfg["mystation"])
 
     def test_raises_error_on_date_sql_missing(self):
         expected_error_message = 'Parameter "date_sql" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            MeteologgerStorage_odbc(
+            cfg = configparser.ConfigParser(interpolation=None)
+            cfg.read_dict(
                 {
-                    "station_id": 1334,
-                    "path": "irrelevant",
-                    "storage_format": "odbc",
-                    "fields": "5, 6",
-                    "table": "irrelevant",
-                    "data_columns": "irrelevant",
-                    "timezone": "Etc/GMT-2",
+                    "mystation": {
+                        "station_id": 1334,
+                        "path": "irrelevant",
+                        "storage_format": "odbc",
+                        "fields": "5, 6",
+                        "table": "irrelevant",
+                        "data_columns": "irrelevant",
+                        "timezone": "Etc/GMT-2",
+                    }
                 }
             )
+            MeteologgerStorage_odbc(cfg["mystation"])
 
     def test_raises_error_on_data_columns_missing(self):
         expected_error_message = 'Parameter "data_columns" is required'
@@ -54,20 +63,24 @@ class ConfigurationTestCase(TestCase):
             )
 
     def test_accepts_optional_parameters(sef):
-        MeteologgerStorage_odbc(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "odbc",
-                "fields": "5, 6",
-                "table": "irrelevant",
-                "date_sql": "irrelevant",
-                "timezone": "Etc/GMT-2",
-                "data_columns": "irrelevant",
-                "date_format": "irrelevant",
-                "decimal_separator": "irrelevant",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "odbc",
+                    "fields": "5, 6",
+                    "table": "irrelevant",
+                    "date_sql": "irrelevant",
+                    "timezone": "Etc/GMT-2",
+                    "data_columns": "irrelevant",
+                    "date_format": "irrelevant",
+                    "decimal_separator": "irrelevant",
+                }
             }
         )
+        MeteologgerStorage_odbc(cfg["mystation"])
 
 
 class GetStorageTailTestCase(TestCase):
@@ -93,20 +106,24 @@ class GetStorageTailTestCase(TestCase):
             side_effect=lambda x: x
         )
 
-        self.meteologger_storage = MeteologgerStorage_odbc(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "Some ODBC path",
-                "storage_format": "odbc",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "table": "SomeSQLTable",
-                "data_columns": "variable1,variable2",
-                "date_format": "%Y-%m-%d %H:%M",
-                "date_sql": "timestamp",
-                "decimal_separator": ".",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "Some ODBC path",
+                    "storage_format": "odbc",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "table": "SomeSQLTable",
+                    "data_columns": "variable1,variable2",
+                    "date_format": "%Y-%m-%d %H:%M",
+                    "date_sql": "timestamp",
+                    "decimal_separator": ".",
+                }
             }
         )
+        self.meteologger_storage = MeteologgerStorage_odbc(cfg["mystation"])
         self.result = self.meteologger_storage._get_storage_tail(
             dt.datetime(2019, 3, 2, 3, 0, tzinfo=ZoneInfo("Etc/GMT-2"))
         )

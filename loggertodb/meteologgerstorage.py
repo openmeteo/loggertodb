@@ -221,6 +221,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         self.nfields_to_ignore = int(parameters.get("nfields_to_ignore", "0"))
         self.ignore_lines = parameters.get("ignore_lines", "")
         self.encoding = parameters.get("encoding", "utf8")
+        self.allow_overlaps = parameters.getboolean("allow_overlaps", False)
 
     def get_required_parameters(self):
         return super().get_required_parameters() | {"fields"}
@@ -231,6 +232,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
             "nullstr",
             "ignore_lines",
             "encoding",
+            "allow_overlaps",
         }
 
     @property
@@ -261,35 +263,51 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         return self._get_storage_tail_from_file(self.path, after_timestamp)[0]
 
     def _get_storage_tail_from_file(self, filename, after_timestamp):
-        result = []
-        reached_after_timestamp = False
+        if self.allow_overlaps:
+            records_dict = {}
+        else:
+            records_list = []
         with ropen(filename, encoding=self.encoding, errors="replace") as xr:
+            reached_after_timestamp = False
             prev_timestamp = ""
             for line in xr:
                 if self._must_ignore_line(line):
-                    self.logger.debug("Ignoring line '{}'".format(line))
+                    self.logger.debug(f"Ignoring line '{line}'")
                     continue
                 else:
-                    self.logger.debug("Parsing line '{}'".format(line))
+                    self.logger.debug(f"Parsing line '{line}'")
 
                 timestamp = self._extract_timestamp(line).replace(second=0)
                 timestamp = self._get_datetime_with_correct_fold(timestamp)
                 timestamp = timestamp.astimezone(dt.timezone.utc)
-                if timestamp == prev_timestamp:
-                    w = "Omitting line with repeated timestamp " + timestamp.isoformat()
-                    self.logger.warning(w)
-                    continue
-                prev_timestamp = timestamp
+                record = {
+                    "timestamp": timestamp,
+                    "line": line,
+                    "filename": filename,
+                }
+                if self.allow_overlaps:
+                    if timestamp <= after_timestamp or timestamp in records_dict:
+                        continue
+                    records_dict[timestamp] = record
+                else:
+                    if timestamp <= after_timestamp:
+                        reached_after_timestamp = True
+                        break
+                    if timestamp == prev_timestamp:
+                        self.logger.warning(
+                            "Omitting line with repeated timestamp "
+                            f"{timestamp.isoformat()}"
+                        )
+                        continue
+                    prev_timestamp = timestamp
+                    records_list.append(record)
                 self.logger.debug("Timestamp: " + timestamp.isoformat())
-                if timestamp <= after_timestamp:
-                    reached_after_timestamp = True
-                    break
-                result.append(
-                    {"timestamp": timestamp, "line": line, "filename": filename}
-                )
-
-        result.reverse()
-        return (result, reached_after_timestamp)
+        if self.allow_overlaps:
+            records_list = list(
+                dict(sorted(records_dict.items(), reverse=True)).values()
+            )
+        records_list.reverse()
+        return (records_list, reached_after_timestamp)
 
     def _must_ignore_line(self, line):
         if not line.strip() or not self._subset_identifiers_match(line):
@@ -301,26 +319,30 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
 
 class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
     def _get_storage_tail(self, after_timestamp):
-        self._get_sorted_files()
-        return self._get_storage_tail_from_multiple_files(after_timestamp)
+        self._get_files()
+        if not self.allow_overlaps:
+            self._sort_files()
+        result = self._get_storage_tail_from_multiple_files(after_timestamp)
+        if self.allow_overlaps:
+            result = self._fix_overlaps(result)
+        return result
 
-    def _get_sorted_files(self):
-        files = []
+    def _get_files(self):
+        self._files = []
         for filename in glob(self.path):
             self.filename = filename
-            files.append(self._get_file())
-        self._sorted_files = sorted(
-            files,
-            key=lambda x: x["last_date"]
-            or dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc),
-        )
+            self._files.append(self._get_file())
+
+    def _sort_files(self):
+        start_of_epoch = dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
+        self._files.sort(key=lambda x: x["last_date"] or start_of_epoch)
 
     def _get_file(self):
-        return {
-            "filename": self.filename,
-            "first_date": self._extract_first_date_from_file(self.filename),
-            "last_date": self._extract_last_date_from_file(self.filename),
-        }
+        result = {"filename": self.filename}
+        if not self.allow_overlaps:
+            result["first_date"] = self._extract_first_date_from_file(self.filename)
+            result["last_date"] = self._extract_last_date_from_file(self.filename)
+        return result
 
     def _extract_first_date_from_file(self, filename):
         with open(filename, encoding=self.encoding, errors="replace") as f:
@@ -344,7 +366,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
 
     def _get_storage_tail_from_multiple_files(self, after_timestamp):
         result = []
-        for file in reversed(self._sorted_files):
+        for file in reversed(self._files):
             partial_result, reached_after_timestamp = self._get_storage_tail_from_file(
                 file["filename"], after_timestamp
             )
@@ -353,13 +375,20 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 break
         return result
 
+    def _fix_overlaps(self, records):
+        new_records = {}
+        for record in records:
+            timestamp = record["timestamp"]
+            new_records[timestamp] = record
+        return [v for _, v in sorted(new_records.items())]
+
     def _raise_monotonic_exception(self, index):
         self._check_file_order()
         super()._raise_monotonic_exception(index)
 
     def _check_file_order(self):
         previous_file = None
-        for file in self._sorted_files:
+        for file in self._files:
             self._check_file_dates(file)
             if previous_file:
                 self._check_adjacent_file_dates(previous_file, file)

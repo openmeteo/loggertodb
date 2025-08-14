@@ -1,7 +1,9 @@
+import configparser
 import datetime as dt
 import textwrap
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 from pyfakefs.fake_filesystem_unittest import TestCase
 
 from loggertodb.exceptions import MeteologgerStorageReadError
@@ -37,13 +39,15 @@ class GetStorageTailTestCase(TestCase):
             "station_id": 1334,
             "path": "/foo/bar?",
             "storage_format": "dummy",
-            "fields": "5, 6",
+            "fields": "6, 6",
             "timezone": "Etc/GMT-2",
             "null": "NULL",
         }
         if self.use_headers_in_files:
             parms["ignore_lines"] = "Date"
-        return DummyMultiTextFileMeteologgerStorage(parms)
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict({"mystation": parms})
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def _create_files(self):
         self._create_test_file("/foo/bar1", 2018)
@@ -171,16 +175,20 @@ class GetStorageTailNoFilesTestCase(TestCase):
         self.meteologger_storage = self._get_meteologger_storage()
 
     def _get_meteologger_storage(self):
-        return DummyMultiTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar?",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar?",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                }
             }
         )
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def test_get_storage_tail_returns_empty_list(self):
         result = self.meteologger_storage._get_storage_tail(
@@ -209,7 +217,9 @@ class GetStorageTailEmptyFileTestCase(TestCase):
             "null": "NULL",
             "ignore_lines": "Date",
         }
-        return DummyMultiTextFileMeteologgerStorage(parms)
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict({"mystation": parms})
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def _create_files(self):
         self._create_test_file("/foo/bar1", 2018)
@@ -253,16 +263,21 @@ class BadFileOrder(TestCase):
         self._create_file()
 
     def _get_meteologger_storage(self):
-        parms = {
-            "station_id": 1334,
-            "path": "/foo/bar?",
-            "storage_format": "dummy",
-            "fields": "5, 6",
-            "timezone": "Etc/GMT-2",
-            "null": "NULL",
-            "ignore_lines": "Date",
-        }
-        return DummyMultiTextFileMeteologgerStorage(parms)
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar?",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "ignore_lines": "Date",
+                }
+            }
+        )
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def _create_file(self):
         self.fs.create_file(
@@ -287,21 +302,26 @@ class BadFileOrder(TestCase):
 class FilesWithOverlap(TestCase):
     def setUp(self):
         self.setUpPyfakefs()
-        self.meteologger_storage = self._get_meteologger_storage()
         self._create_file1()
         self._create_file2()
 
-    def _get_meteologger_storage(self):
-        parms = {
-            "station_id": 1334,
-            "path": "/foo/bar?",
-            "storage_format": "dummy",
-            "fields": "5, 6",
-            "timezone": "Etc/GMT-2",
-            "null": "NULL",
-            "ignore_lines": "Date",
-        }
-        return DummyMultiTextFileMeteologgerStorage(parms)
+    def _get_meteologger_storage(self, *, allow_overlaps):
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar?",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "ignore_lines": "Date",
+                    "allow_overlaps": f"{allow_overlaps}",
+                }
+            }
+        )
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def _create_file1(self):
         self.fs.create_file(
@@ -327,12 +347,34 @@ class FilesWithOverlap(TestCase):
             ),
         )
 
-    def test_raises_value_error(self):
+    def test_raises_value_error_without_overlaps(self):
+        meteologger_storage = self._get_meteologger_storage(allow_overlaps=False)
         msg = r"The timestamps in files .foo.bar1 and .foo.bar2 overlap."
         with self.assertRaisesRegex(ValueError, msg):
-            self.meteologger_storage.get_recent_data(
+            meteologger_storage.get_recent_data(
                 5, dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
             )
+
+    def test_goes_alright_with_overlaps(self):
+        meteologger_storage = self._get_meteologger_storage(allow_overlaps=True)
+        recent_data = meteologger_storage.get_recent_data(
+            5, dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
+        )
+        expected_result = pd.DataFrame(
+            data={
+                "value": [42.1, 42.1, 42.2, 42.2],
+                "flags": [""] * 4,
+            },
+            index=[
+                dt.datetime(2018, 2, 28, 15, 20, tzinfo=dt.timezone.utc),
+                dt.datetime(2019, 2, 28, 15, 20, tzinfo=dt.timezone.utc),
+                dt.datetime(2019, 2, 28, 15, 30, tzinfo=dt.timezone.utc),
+                dt.datetime(2020, 2, 28, 15, 30, tzinfo=dt.timezone.utc),
+            ],
+        )
+        pd.testing.assert_frame_equal(
+            recent_data, expected_result, check_dtype=False, check_index_type=False
+        )
 
 
 class FileWithBadLine(TestCase):
@@ -342,17 +384,22 @@ class FileWithBadLine(TestCase):
         self._create_file()
 
     def _get_meteologger_storage(self):
-        parms = {
-            "station_id": 1334,
-            "path": "/foo/bar?",
-            "storage_format": "simple",
-            "fields": "5, 6",
-            "timezone": "Etc/GMT-2",
-            "null": "NULL",
-            "ignore_lines": "Date",
-            "nfields_to_ignore": 1,
-        }
-        return MeteologgerStorage_simple(parms)
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar?",
+                    "storage_format": "simple",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "ignore_lines": "Date",
+                    "nfields_to_ignore": 1,
+                }
+            }
+        )
+        return MeteologgerStorage_simple(cfg["mystation"])
 
     def _create_file(self):
         self.fs.create_file(

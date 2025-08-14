@@ -2,6 +2,12 @@
 Release notes
 =============
 
+Version 4.1 (2025-08-14)
+========================
+
+Added "allow_overlaps" configuration parameter. This allows files
+or groups of files with completely mixed up lines.
+
 Version 4.0 (2025-08-04)
 ========================
 

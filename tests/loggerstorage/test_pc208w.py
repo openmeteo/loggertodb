@@ -1,3 +1,4 @@
+import configparser
 import datetime as dt
 import logging
 import math
@@ -11,32 +12,41 @@ class CheckParametersTestCase(TestCase):
     def test_raises_error_on_subset_identifiers_missing(self):
         expected_error_message = 'Parameter "subset_identifiers" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            MeteologgerStorage_pc208w(
+            cfg = configparser.ConfigParser(interpolation=None)
+            cfg.read_dict(
                 {
-                    "station_id": 1334,
-                    "path": "irrelevant",
-                    "storage_format": "dummy",
-                    "fields": "5, 6",
-                    "timezone": "Etc/GMT-2",
+                    "mystation": {
+                        "station_id": 1334,
+                        "path": "irrelevant",
+                        "storage_format": "dummy",
+                        "fields": "5, 6",
+                        "timezone": "Etc/GMT-2",
+                    }
                 }
             )
+            MeteologgerStorage_pc208w(cfg["mystation"])
 
 
 class ExtractTimestampTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_pc208w(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "pc208w",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "subset_identifiers": "18",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "pc208w",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "subset_identifiers": "18",
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_pc208w(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_extracts_timestamp(self):
@@ -58,17 +68,22 @@ class GetItemFromLineTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_pc208w(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "pc208w",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "subset_identifiers": "18",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "pc208w",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "subset_identifiers": "18",
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_pc208w(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_get_first_item(self):
@@ -103,17 +118,22 @@ class SubsetIdentifiersMatchTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_pc208w(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "pc208w",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "subset_identifiers": "18",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "pc208w",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "subset_identifiers": "18",
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_pc208w(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_matches(self):

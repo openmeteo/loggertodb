@@ -9,7 +9,7 @@ copyright = "2004-2020 various entities"
 author = "Antonis Christofides"
 version = get_version(root="..")
 release = version
-language = None
+language = "en"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
 todo_include_todos = False

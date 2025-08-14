@@ -1,9 +1,11 @@
 import os
+import shutil
 import textwrap
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, mkdtemp
 from unittest import TestCase
 from unittest.mock import patch
 
+from click import ClickException
 from click.testing import CliRunner
 
 from loggertodb import LoggerToDbError, cli
@@ -219,6 +221,63 @@ class CorrectConfigurationWithLogFileTestCase(TestCase):
                 )
             self.result = runner.invoke(cli.main, ["loggertodb.conf"])
             self.assertTrue(os.path.exists("deleteme"))
+
+
+@patch("loggertodb.cli.Enhydris")
+class AllowOverlapsTestCase(TestCase):
+    def setUp(self):
+        self.tmpdir = mkdtemp()
+        self.configpathname = os.path.join(self.tmpdir, "loggertodb.conf")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def _run_with_config(self, config):
+        with open(self.configpathname, "w") as tmpfile:
+            tmpfile.write(config)
+        LoggerToDb(self.configpathname).run()
+
+    def test_no(self, *args):
+        self._run_with_config(
+            textwrap.dedent(
+                f"""\
+                [General]
+                base_url = https://example.com
+                auth_token = 123456789abcdef0123456789abcdef012345678
+                logfile = {self.configpathname}
+
+                [My station]
+                timezone = UTC
+                storage_format = simple
+                station_id = 1334
+                path = .
+                fields = 1,2,3
+                allow_overlaps = No
+                """
+            )
+        )
+        # If it hasn't raised exception, it's OK
+
+    def test_garbage(self, *args):
+        with self.assertRaises(ClickException):
+            self._run_with_config(
+                textwrap.dedent(
+                    f"""\
+                    [General]
+                    base_url = https://example.com
+                    auth_token = 123456789abcdef0123456789abcdef012345678
+                    logfile = {self.configpathname}
+
+                    [My station]
+                    timezone = UTC
+                    storage_format = simple
+                    station_id = 1334
+                    path = .
+                    fields = 1,2,3
+                    allow_overlaps = garbage
+                    """
+                )
+            )
 
 
 class UploadErrorTestCase(TestCase):

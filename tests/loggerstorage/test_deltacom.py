@@ -1,3 +1,4 @@
+import configparser
 import datetime as dt
 import logging
 import math
@@ -12,16 +13,21 @@ class ExtractTimestampTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_deltacom(
+        cfg = configparser.ConfigParser()
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "deltacom",
-                "fields": "5, 6",
-                "null": "NULL",
-                "timezone": "Etc/GMT-2",
-            },
-            logger=dummy_logger,
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "deltacom",
+                    "fields": "5, 6",
+                    "null": "NULL",
+                    "timezone": "Etc/GMT-2",
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_deltacom(
+            cfg["mystation"], logger=dummy_logger
         )
 
     def test_extracts_timestamp(self):
@@ -39,15 +45,21 @@ class GetItemFromLineTestCase(TestCase):
     def setUp(self):
         dummy_logger = logging.getLogger("dummy")
         dummy_logger.addHandler(logging.NullHandler())
-        self.meteologger_storage = MeteologgerStorage_deltacom(
+        cfg = configparser.ConfigParser()
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "deltacom",
-                "fields": "5, 6",
-                "null": "NULL",
-                "timezone": "Etc/GMT-2",
-            },
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "deltacom",
+                    "fields": "5, 6",
+                    "null": "NULL",
+                    "timezone": "Etc/GMT-2",
+                },
+            }
+        )
+        self.meteologger_storage = MeteologgerStorage_deltacom(
+            cfg["mystation"],
             logger=dummy_logger,
         )
 

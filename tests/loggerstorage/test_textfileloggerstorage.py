@@ -1,4 +1,8 @@
+import configparser
 import datetime as dt
+import os
+import shutil
+import tempfile
 import textwrap
 from collections import OrderedDict
 from unittest import TestCase
@@ -29,69 +33,89 @@ class CheckParametersTestCase(TestCase):
     def test_raises_error_on_fields_missing(self):
         expected_error_message = 'Parameter "fields" is required'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyTextFileMeteologgerStorage(
+            cfg = configparser.ConfigParser(interpolation=None)
+            cfg.read_dict(
                 {
-                    "station_id": 1334,
-                    "path": "irrelevant",
-                    "storage_format": "dummy",
-                    "timezone": "Etc/GMT-2",
+                    "mystation": {
+                        "station_id": 1334,
+                        "path": "irrelevant",
+                        "storage_format": "dummy",
+                        "timezone": "Etc/GMT-2",
+                    }
                 }
             )
+            DummyTextFileMeteologgerStorage(cfg["mystation"])
 
     def test_raises_error_on_invalid_parameter(self):
         expected_error_message = 'Unknown parameter "hello"'
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyTextFileMeteologgerStorage(
+            cfg = configparser.ConfigParser(interpolation=None)
+            cfg.read_dict(
                 {
+                    "mystation": {
+                        "station_id": 1334,
+                        "path": "irrelevant",
+                        "storage_format": "dummy",
+                        "fields": "5, 6",
+                        "hello": "world",
+                        "timezone": "Etc/GMT-2",
+                    }
+                }
+            )
+            DummyTextFileMeteologgerStorage(cfg["mystation"])
+
+    def test_accepts_allowed_optional_parameters(self):
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
                     "station_id": 1334,
                     "path": "irrelevant",
                     "storage_format": "dummy",
                     "fields": "5, 6",
-                    "hello": "world",
                     "timezone": "Etc/GMT-2",
+                    "null": "NULL",
                 }
-            )
-
-    def test_accepts_allowed_optional_parameters(self):
-        DummyTextFileMeteologgerStorage(
-            {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
             }
         )
+        DummyTextFileMeteologgerStorage(cfg["mystation"])
 
 
 class TimeseriesIdsTestCase(TestCase):
     def test_timeseries_group_ids(self):
-        meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "dummy",
-                "fields": "0, 5, 0, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "dummy",
+                    "fields": "0, 5, 0, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                }
             }
         )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         self.assertEqual(meteologger_storage.timeseries_group_ids, set((5, 6)))
 
 
 class ExtractValueAndFlagsTestCase(TestCase):
     def setUp(self):
-        self.meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                }
             }
         )
+        self.meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         self.record = {
             "timestamp": dt.datetime(2019, 2, 28, 17, 30, tzinfo=ZoneInfo("Etc/GMT-2")),
             "line": "2019-02-28 17:30,42.2 MYFLAG1 MYFLAG2,24.3\n",
@@ -110,16 +134,20 @@ class ExtractValueAndFlagsTestCase(TestCase):
 
 class GetStorageTailTestCase(TestCase):
     def setUp(self):
-        meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                }
             }
         )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         with Patcher() as patcher:
             patcher.fs.create_file(
                 "/foo/bar",
@@ -159,16 +187,20 @@ class GetStorageTailTestCase(TestCase):
 
 class GetRecentDataWithAmbiguousHourTestCase(TestCase):
     def setUp(self):
-        meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "null": "NULL",
-                "timezone": "Europe/Athens",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "null": "NULL",
+                    "timezone": "Europe/Athens",
+                }
             }
         )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         with Patcher() as patcher:
             patcher.fs.create_file(
                 "/foo/bar",
@@ -237,17 +269,21 @@ class GetRecentDataWithAmbiguousHourTestCase(TestCase):
 
 class IgnoreLinesTestCase(TestCase):
     def setUp(self):
-        meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "ignore_lines": "ignore( this)? line",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "ignore_lines": "ignore( this)? line",
+                }
             }
         )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         with Patcher() as patcher:
             patcher.fs.create_file(
                 "/foo/bar",
@@ -290,18 +326,22 @@ class IgnoreLinesTestCase(TestCase):
 
 class EncodingTestCase(TestCase):
     def setUp(self):
-        meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "ignore_lines": "n' est pas",
-                "encoding": "iso-8859-1",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "ignore_lines": "n' est pas",
+                    "encoding": "iso-8859-1",
+                }
             }
         )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         with Patcher() as patcher:
             patcher.fs.create_file(
                 "/foo/bar",
@@ -346,17 +386,21 @@ class EncodingErrorsTestCase(TestCase):
         # We use an iso-8859-1-encoded file but without declaring the encoding in the
         # parameters, so when it attempts to read it it will try utf8. It should forgive
         # the error
-        meteologger_storage = DummyTextFileMeteologgerStorage(
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
             {
-                "station_id": 1334,
-                "path": "/foo/bar",
-                "storage_format": "dummy",
-                "fields": "5, 6",
-                "timezone": "Etc/GMT-2",
-                "null": "NULL",
-                "ignore_lines": "n' est pas",
+                "mystation": {
+                    "station_id": 1334,
+                    "path": "/foo/bar",
+                    "storage_format": "dummy",
+                    "fields": "5, 6",
+                    "timezone": "Etc/GMT-2",
+                    "null": "NULL",
+                    "ignore_lines": "n' est pas",
+                }
             }
         )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
         with Patcher() as patcher:
             patcher.fs.create_file(
                 "/foo/bar",
@@ -393,4 +437,70 @@ class EncodingErrorsTestCase(TestCase):
                     "filename": "/foo/bar",
                 },
             ],
+        )
+
+
+class AllowOverlapsTestCase(TestCase):
+    file_contents = textwrap.dedent(
+        """\
+        2019-02-28 17:20,42.1
+        2019-02-28 17:30,42.2
+        2019-02-28 17:40,42.3
+        2019-02-28 17:30,42.2
+        2019-02-28 17:40,42.3
+        2019-02-28 17:50,42.4
+        """
+    )
+    after = dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.datafilename = os.path.join(self.tmpdir, "foo")
+        with open(self.datafilename, "w") as f:
+            f.write(self.file_contents)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_get_recent_data_raises_error_without_allow_overlaps(self):
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
+                    "station_id": 1334,
+                    "path": self.datafilename,
+                    "storage_format": "dummy",
+                    "fields": "1",
+                    "timezone": "Etc/GMT-2",
+                }
+            }
+        )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
+        with self.assertRaises(ValueError):
+            meteologger_storage.get_recent_data(1, self.after)
+
+    def test_get_recent_data_with_allow_overlaps(self):
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict(
+            {
+                "mystation": {
+                    "station_id": 1334,
+                    "path": self.datafilename,
+                    "storage_format": "dummy",
+                    "fields": "1",
+                    "timezone": "Etc/GMT-2",
+                    "allow_overlaps": "yes",
+                }
+            }
+        )
+        meteologger_storage = DummyTextFileMeteologgerStorage(cfg["mystation"])
+        result = meteologger_storage.get_recent_data(1, self.after)
+        expected_index = [
+            dt.datetime(2019, 2, 28, 15, 30, tzinfo=dt.timezone.utc),
+            dt.datetime(2019, 2, 28, 15, 40, tzinfo=dt.timezone.utc),
+            dt.datetime(2019, 2, 28, 15, 50, tzinfo=dt.timezone.utc),
+        ]
+        self.assertEqual(list(result.index), expected_index)
+        self.assertTrue(
+            np.allclose(result["value"].astype(float).values, [42.2, 42.3, 42.4])
         )

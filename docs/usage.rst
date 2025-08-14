@@ -300,6 +300,11 @@ ignore_lines
    useful to ignore header lines or otherwise lines that shouldn't be
    processed.
 
+allow_overlaps
+   Valid only for storage formats that are text files. If ``true`` (or
+   ``yes`` or ``on`` or ``1``, and it's case-insensitive), then overlaps
+   are allowed. See `Handling overlaps`_ for more. The default is false.
+
 encoding
    For storage formats that are text files, it specifies the encoding.
    The default is utf8. `List of possible encodings`_.
@@ -533,3 +538,46 @@ correct thing; it will consider that the second occurence is after the
 switch and the first is before the switch. If according to the
 computer's clock the switch hasn't occurred yet, any references to the
 ambiguous hour are considered to have occurred before the switch.
+
+Handling overlaps
+=================
+
+Occasionally input text files may have repeated groups of lines such as
+this, where the second and third line are repeated::
+
+    2025-08-11 11:20,18.2,48
+    2025-08-11 11:30,18.3,47
+    2025-08-11 11:40,18.4,46
+    2025-08-11 11:30,18.3,47
+    2025-08-11 11:40,18.4,46
+    2025-08-11 11:50,18.5,45
+
+Normally ``loggertodb`` will terminate with an error there and you must
+fix the input file. However, ``allow_overlaps = yes`` can be specified
+in the configuration file to change this behaviour, but it's not without
+side effects.
+
+The most significant problem is that repeated lines might have different
+values. In this case ``loggertodb`` will merely ignore one of the
+versions.
+
+The second problem is one of performance. Normally ``loggertodb`` reads
+the last date stored in the database and then reads the input file(s)
+from the end upwards until it finds the date that is already stored in
+the database. Subsequently it enters the new records from that point on.
+This operation takes a significant time only if there are many records
+to be entered; for example, the first time a large file is uploaded.
+Otherwise the file might be 50 MB long but if only 200 bytes at the end
+of the file are new, only those would be read.
+
+If ``allow_overlaps = yes``, this way of operating does not work; there
+could be recent records before the first-from-the-end instance of the
+latest date stored in the database. Therefore, in that case,
+``loggertodb`` changes its way of operating completely: it reads the
+entire input file(s). This may take too many resources if done
+frequently, so don't run ``loggertodb`` every 10 minutes in that case.
+
+Therefore, avoid using ``allow_overlaps = yes``; instead, fix the input
+files. However, when there are too many input files and it's not
+possible to assign a human to fix them, this configuration parameter
+could be useful.
