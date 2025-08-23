@@ -2,6 +2,11 @@
 Release notes
 =============
 
+Version 4.2 (2025-08-23)
+========================
+
+Added the possibility to specify many files (or patterns) in ``path``.
+
 Version 4.1 (2025-08-14)
 ========================
 

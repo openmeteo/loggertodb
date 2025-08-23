@@ -387,12 +387,20 @@ simple
    fields in the beginning of each line; this is useful in some formats
    where the date and time are preceeded by a record id or other field.
 
-   If ``path`` contains one of the characters `*?[]`, it is considered
-   to be a pattern that matches many files whose concatenation (ignoring
-   any headers) would be the complete list of records. glob_ is used to
-   find the matching files. ``loggertodb`` does not assume the filenames
-   are ordered in any way; it determines the order by opening all the
-   files and reading a date from each one.
+   ``path`` can refer to many files.  If it contains one of the
+   characters `*?[]`, it is considered to be a pattern that matches
+   many files (glob_ is used for that.) It may also be a multi-line
+   value, with one file or pattern on each line, like this::
+
+        path = /home/alice/data.txt
+            /home/bob/data.txt
+            /home/charlie/data.txt
+
+   When ``path`` thus refers to many files, it is assumed that their
+   concatenation (ignoring any headers) would be the complete list of
+   records.  ``loggertodb`` does not assume the filenames are ordered in
+   any way; it determines the order by opening all the files and reading
+   a date from each one.
 
    .. _glob: https://docs.python.org/3/library/glob.html
 

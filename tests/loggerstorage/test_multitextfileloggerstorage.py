@@ -201,6 +201,40 @@ class GetStorageTailWithHeadersTestCase(GetStorageTailTestCase):
     use_headers_in_files = True
 
 
+class GetStorageTailMultilinePathTestCase(GetStorageTailTestCase):
+    def _get_meteologger_storage(self):
+        parms = {
+            "station_id": 1334,
+            "path": "/foo/bar1\n /foo/bar2\n /foo/bar3",
+            "storage_format": "dummy",
+            "fields": "6, 6",
+            "timezone": "Etc/GMT-2",
+            "null": "NULL",
+        }
+        if self.use_headers_in_files:
+            parms["ignore_lines"] = "Date"
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict({"mystation": parms})
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
+
+
+class GetStorageTailMultilinePathWithPatternsTestCase(GetStorageTailTestCase):
+    def _get_meteologger_storage(self):
+        parms = {
+            "station_id": 1334,
+            "path": "/foo/bar1\n /foo/bar?",
+            "storage_format": "dummy",
+            "fields": "6, 6",
+            "timezone": "Etc/GMT-2",
+            "null": "NULL",
+        }
+        if self.use_headers_in_files:
+            parms["ignore_lines"] = "Date"
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read_dict({"mystation": parms})
+        return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
+
+
 class GetStorageTailEmptyFileTestCase(TestCase):
     def setUp(self):
         self.setUpPyfakefs()

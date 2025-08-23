@@ -329,9 +329,15 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
 
     def _get_files(self):
         self._files = []
-        for filename in glob(self.path):
-            self.filename = filename
-            self._files.append(self._get_file())
+        seen = set()
+        paths = [p.strip() for p in self.path.splitlines() if p.strip()]
+        for pattern in paths:
+            for filename in glob(pattern):
+                if filename in seen:
+                    continue
+                seen.add(filename)
+                self.filename = filename
+                self._files.append(self._get_file())
 
     def _sort_files(self):
         start_of_epoch = dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
