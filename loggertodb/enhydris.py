@@ -12,16 +12,20 @@ from .meteologgerstorage import MeteologgerStorage
 if TYPE_CHECKING:
     from .cli import Configuration
 
+
 class CompositeTimeseriesId(NamedTuple):
     timeseries_group_id: int
     timeseries_id: int
 
 
 class Enhydris:
-    def __init__(self, configuration: Configuration, logger: Logger):
+    def __init__(
+        self, configuration: Configuration, logger: Logger, use_insert_mode: bool
+    ):
         self.base_url = configuration.base_url
         self.auth_token = configuration.auth_token
         self.max_records = configuration.max_records
+        self.use_insert_mode = use_insert_mode
         self.client = EnhydrisApiClient(self.base_url, self.auth_token)
         self.logger = logger
 
@@ -65,6 +69,9 @@ class Enhydris:
         utc = dt.timezone.utc
         self._ts_end_dates: dict[CompositeTimeseriesId, dt.datetime] = {}
         for cts_id in self._composite_timeseries_ids:
+            if self.use_insert_mode:
+                self._ts_end_dates[cts_id] = start_of_time
+                continue
             e = self.client.get_ts_end_date(station_id, *cts_id, timezone="Etc/GMT")
             assert e is None or e.tzinfo is None
             if e:
@@ -86,7 +93,12 @@ class Enhydris:
                     f"Timeseries group {cts_id.timeseries_group_id}: "
                     f"uploading {len(new_data)} new records"
                 )
-                self.client.post_tsdata(station_id, *cts_id, HTimeseries(new_data))
+                self.client.post_tsdata(
+                    station_id,
+                    *cts_id,
+                    HTimeseries(new_data),
+                    mode="insert" if self.use_insert_mode else "append",
+                )
             else:
                 self.logger.info(
                     f"Timeseries group {cts_id.timeseries_group_id}: no new records"

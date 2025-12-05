@@ -150,48 +150,94 @@ class ConfigurationWithWrongMaxRecordsTestCase(TestCase):
         self.assertIn("Wrong max_records: must be an integer", self.result.stderr)
 
 
+@patch("loggertodb.cli.Enhydris")
+@patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
 class CorrectConfigurationTestCase(TestCase):
-    @patch("loggertodb.cli.Enhydris")
-    @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
-    def setUp(self, mock_meteologgerstorage: MagicMock, mock_enhydris: MagicMock):
-        self.mock_meteologgerstorage = mock_meteologgerstorage
-        self.mock_enhydris = mock_enhydris
-        runner = CliRunner()
-        with runner.isolated_filesystem():
-            with open("loggertodb.conf", "w") as f:
-                f.write(
-                    textwrap.dedent(
-                        """\
-                        [General]
-                        base_url = https://example.com
-                        auth_token = 123456789abcdef0123456789abcdef012345678
+    def setUp(self):
+        self.runner = CliRunner()
+        self.fs = self.runner.isolated_filesystem()
+        self.fs.__enter__()
+        with open("loggertodb.conf", "w") as f:
+            f.write(
+                textwrap.dedent(
+                    """\
+                    [General]
+                    base_url = https://example.com
+                    auth_token = 123456789abcdef0123456789abcdef012345678
 
-                        [My station]
-                        storage_format = simple
-                        station_id = 1334
-                        path = .
-                        fields = 1,2,3
-                        """
-                    )
+                    [My station]
+                    storage_format = simple
+                    station_id = 1334
+                    path = .
+                    fields = 1,2,3
+
+                    [My station 2]
+                    storage_format = simple
+                    station_id = 1335
+                    path = hello
+                    fields = 1,2,3
+                    """
                 )
-            self.result = runner.invoke(cli.main, ["loggertodb.conf"])
+            )
 
-    def test_exit_status(self):
-        self.assertEqual(self.result.exit_code, 0)
+    def tearDown(self):
+        self.fs.__exit__(None, None, None)
 
-    def test_has_used_base_url(self):
-        configuration = self.mock_enhydris.call_args[0][0]
+    def test_exit_status(self, m1: MagicMock, m2: MagicMock):
+        result = self.runner.invoke(cli.main, ["loggertodb.conf"])
+        self.assertEqual(result.exit_code, 0)
+
+    def test_has_used_base_url(self, m1: MagicMock, m2: MagicMock):
+        self.runner.invoke(cli.main, ["loggertodb.conf"])
+        configuration = m2.call_args[0][0]
         self.assertEqual(configuration.base_url, "https://example.com")
 
-    def test_has_used_auth_token(self):
-        configuration = self.mock_enhydris.call_args[0][0]
+    def test_has_used_auth_token(self, m1: MagicMock, m2: MagicMock):
+        self.runner.invoke(cli.main, ["loggertodb.conf"])
+        configuration = m2.call_args[0][0]
         self.assertEqual(
             configuration.auth_token, "123456789abcdef0123456789abcdef012345678"
         )
 
-    def test_has_uploaded(self):
-        self.mock_enhydris.return_value.upload.assert_called_once_with(
-            self.mock_meteologgerstorage.return_value
+    def test_has_uploaded(self, m1: MagicMock, m2: MagicMock):
+        self.runner.invoke(cli.main, ["loggertodb.conf"])
+        self.assertEqual(
+            m2.return_value.upload.call_args_list,
+            [
+                ((m1.return_value,), {}),
+                ((m1.return_value,), {}),
+            ],
+        )
+
+    def test_insert_all(self, m1: MagicMock, m2: MagicMock):
+        self.runner.invoke(
+            cli.main,
+            [
+                "--insert-all",
+                "My station",
+                "mydata.csv",
+                "loggertodb.conf",
+            ],
+        )
+        m2.return_value.upload.assert_called_once_with(m1.return_value)
+        self.assertEqual(m2.call_args[0][2], True)
+        self.assertEqual(m1.call_args[0][0]["path"], "mydata.csv")
+        self.assertEqual(m2.call_args[0][0].max_records, 1_000_000_000)
+
+    def test_fails_if_insert_all_section_not_found(self, m1: MagicMock, m2: MagicMock):
+        result = self.runner.invoke(
+            cli.main,
+            [
+                "--insert-all",
+                "Nonexistent station",
+                "mydata.csv",
+                "loggertodb.conf",
+            ],
+        )
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn(
+            "Section 'Nonexistent station' not found in configuration file",
+            result.stderr,
         )
 
 
@@ -236,7 +282,7 @@ class AllowOverlapsTestCase(TestCase):
     def _run_with_config(self, config: str):
         with open(self.configpathname, "w") as tmpfile:
             tmpfile.write(config)
-        LoggerToDb(self.configpathname).run()
+        LoggerToDb(self.configpathname, None).run()
 
     def test_no(self, *args: Any):
         self._run_with_config(
@@ -318,7 +364,7 @@ class UploadErrorTestCase(TestCase):
                 tmpfile.write(self.config)
                 tmpfile.seek(0)
                 tmpfilename = tmpfile.name
-            LoggerToDb(tmpfile.name).run()
+            LoggerToDb(tmpfile.name, None).run()
         finally:
             if tmpfilename is not None:
                 os.remove(tmpfilename)

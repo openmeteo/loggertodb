@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pandas as pd
 
-from loggertodb.enhydris import Enhydris
+from loggertodb.enhydris import CompositeTimeseriesId, Enhydris
 
 
 @patch("loggertodb.enhydris.HTimeseries", new=lambda x: x)  # type: ignore
@@ -16,7 +16,7 @@ class UploadTestCase(TestCase):
     def setUp(self, mock_EnhydrisApiClient: MagicMock):
         self.EnhydrisApiClient = mock_EnhydrisApiClient
         self.MeteologgerStorage = MagicMock()
-        self.enhydris = Enhydris(MagicMock(), MagicMock())
+        self.enhydris = Enhydris(MagicMock(), MagicMock(), use_insert_mode=False)
 
     def _configure_EnhydrisApiClient(self, attribute: str, value: Any):
         self.EnhydrisApiClient.configure_mock(**{f"return_value.{attribute}": value})
@@ -136,7 +136,35 @@ class UploadTestCase(TestCase):
         mock_calls = self.EnhydrisApiClient.return_value.post_tsdata.mock_calls
         self.assertEqual(len(mock_calls), 2)
         self.assertEqual(mock_calls[0].args[:3], (42, 1, 4242))
+        self.assertEqual(mock_calls[0].kwargs["mode"], "append")
         self.assertEqual(mock_calls[1].args[:3], (42, 2, 4243))
+
+    def test_insert_all(self):
+        self.enhydris.use_insert_mode = True
+        self._configure_MeteologgerStorage("station_id", 42)
+        self._configure_MeteologgerStorage("timeseries_group_ids", {1, 2})
+        mock1, mock2 = MagicMock(), MagicMock()
+        mock1.__len__.return_value = mock2.__len__.return_value = 5
+        self._configure_MeteologgerStorage(
+            "get_recent_data.side_effect", [mock1, mock2]
+        )
+        self._configure_EnhydrisApiClient(
+            "list_timeseries.side_effect",
+            [[{"id": 4242, "type": "Initial"}], [{"id": 4243, "type": "Initial"}]],
+        )
+        self._setup_get_ts_end_date()
+        self.enhydris.upload(self.MeteologgerStorage())
+        self.EnhydrisApiClient.return_value.get_ts_end_date.assert_not_called()
+        mock_calls = self.EnhydrisApiClient.return_value.post_tsdata.mock_calls
+        self.assertEqual(mock_calls[0].kwargs["mode"], "insert")
+        start_of_time = dt.datetime(1700, 1, 1, tzinfo=dt.timezone.utc)
+        self.assertEqual(
+            self.enhydris._ts_end_dates,  # type: ignore
+            {
+                CompositeTimeseriesId(1, 4242): start_of_time,
+                CompositeTimeseriesId(2, 4243): start_of_time,
+            },
+        )
 
 
 class MaxRecordsTestCase(TestCase):
@@ -144,7 +172,7 @@ class MaxRecordsTestCase(TestCase):
     def setUp(self, mock_EnhydrisApiClient: MagicMock):
         self.EnhydrisApiClient = mock_EnhydrisApiClient
         self.MeteologgerStorage = MagicMock()
-        self.enhydris = Enhydris(MagicMock(), MagicMock())
+        self.enhydris = Enhydris(MagicMock(), MagicMock(), use_insert_mode=False)
 
     def _configure_MeteologgerStorage(self, attribute: str, value: Any):
         self.MeteologgerStorage.configure_mock(**{f"return_value.{attribute}": value})

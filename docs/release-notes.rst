@@ -2,6 +2,11 @@
 Release notes
 =============
 
+DEV
+===
+
+Added the ``--insert-all`` command line argument.
+
 Version 4.2 (2025-08-23)
 ========================
 

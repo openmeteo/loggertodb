@@ -11,7 +11,7 @@ dependencies = [
     "iso8601>=2.1,<3",
     "simpletail>=1,<2",
     "tzdata",
-    "pthelma>=2,<3",
+    "pthelma>=2.8.1,<3",
 ]
 authors = [
     {name = "Antonis Christofides", email = "antonis@antonischristofides.com"},

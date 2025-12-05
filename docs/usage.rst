@@ -183,6 +183,34 @@ and ``Task Scheduler`` on Windows), or, if the software you use to
 download the data from the meteorological station has the feature, add
 ``loggertodb`` as a trigger.
 
+Command line reference
+======================
+
+::
+
+   loggertodb  <configuration file> [--insert-all <station> <filepath>]
+
+Normally ``loggertodb`` reads the last date stored in the database and
+then reads the input file(s) from the end upwards until it finds the
+date that is already stored in the database.  Subsequently it enters the
+new records from that point on. This can be changed with the
+``--insert-all`` command line option. In this case, there are the
+following differences from normal operation:
+
+ * ``loggertodb`` ignores all sections of the configuration file except
+   for <station>.
+ * It also ignores the ``path`` in the configuration file and instead
+   uses <filepath>.
+ * It also ignores ``max_records``.
+ * It uploads all records in the specified file; not only those that are
+   newer than the last record in the database. However records with
+   these dates must not already be in the database; in this case
+   Enhydris will refuse to upload with an http error code of 400.
+
+``--insert-all`` is useful when older data are discovered later and need
+to be inserted retroactively. It is available only for text storage formats; it
+is not available for ``wdat5``.
+
 Configuration file reference
 ============================
 

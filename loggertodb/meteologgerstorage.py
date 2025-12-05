@@ -537,7 +537,7 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
         return super().get_optional_parameters() | more_parms
 
     def _extract_timestamp(self, line: str) -> dt.datetime:
-        datestr = ''
+        datestr = ""
         try:
             items = line.split(self.delimiter)
             datestr = items[self.nfields_to_ignore].strip().strip('"').strip()
