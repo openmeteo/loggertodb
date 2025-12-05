@@ -1,7 +1,9 @@
+import configparser
 import datetime as dt
 from collections import OrderedDict
+from typing import Any
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -11,25 +13,27 @@ from loggertodb.meteologgerstorage import MeteologgerStorage
 
 
 class DummyMeteologgerStorage(MeteologgerStorage):
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         return [
             {"timestamp": after_timestamp + dt.timedelta(minutes=1), "line": "line1"},
             {"timestamp": after_timestamp + dt.timedelta(minutes=2), "line": "line2"},
         ]
 
-    def _extract_value_and_flags(self, ts_id, record):
+    def _extract_value_and_flags(
+        self, ts_id: int, record: dict[str, Any]
+    ) -> tuple[int, str]:
         # Use the ts_id as value and the whole line as flags
         return (ts_id, record["line"])
 
     @property
-    def timeseries_group_ids(self):
-        return (15, 16)
+    def timeseries_group_ids(self) -> set[int]:
+        return {15, 16}
 
 
 class DummyWrongOrderMeteologgerStorage(DummyMeteologgerStorage):
     """A file with a storage tail that contains records in the wrong order."""
 
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         result = super()._get_storage_tail(after_timestamp)
         result.reverse()
         return result
@@ -38,57 +42,81 @@ class DummyWrongOrderMeteologgerStorage(DummyMeteologgerStorage):
 class MeteologgerStorageCheckParametersTestCase(TestCase):
     def test_raises_error_on_path_missing(self):
         expected_error_message = 'Parameter "path" is required'
+        config = configparser.ConfigParser()
+        config.read_dict(
+            {
+                "sectioname": {
+                    "station_id": 1334,
+                    "storage_format": "dummy",
+                    "timezone": "Etc/GMT-2",
+                }
+            }
+        )
         with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage(
-                {"station_id": 1334, "storage_format": "dummy", "timezone": "Etc/GMT-2"}
-            )
+            DummyMeteologgerStorage(config["sectioname"])
 
     def test_raises_error_on_storage_format_missing(self):
         expected_error_message = 'Parameter "storage_format" is required'
-        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage(
-                {
+        config = configparser.ConfigParser()
+        config.read_dict(
+            {
+                "sectioname": {
                     "station_id": 1334,
                     "path": "irrelevant",
                     "timezone": "Etc/GMT-2",
                 }
-            )
+            }
+        )
+        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
+            DummyMeteologgerStorage(config["sectioname"])
 
     def test_raises_error_on_station_missing(self):
         expected_error_message = 'Parameter "station_id" is required'
-        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage(
-                {
+        config = configparser.ConfigParser()
+        config.read_dict(
+            {
+                "sectioname": {
                     "path": "irrelevant",
                     "storage_format": "dummy",
                     "timezone": "Etc/GMT-2",
                 }
-            )
+            }
+        )
+        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
+            DummyMeteologgerStorage(config["sectioname"])
 
     def test_raises_error_on_invalid_parameter(self):
         expected_error_message = 'Unknown parameter "hello"'
-        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
-            DummyMeteologgerStorage(
-                {
+        config = configparser.ConfigParser()
+        config.read_dict(
+            {
+                "sectioname": {
                     "station_id": 1334,
                     "path": "irrelevant",
                     "storage_format": "dummy",
                     "hello": "world",
                     "timezone": "Etc/GMT-2",
                 }
-            )
+            }
+        )
+        with self.assertRaisesRegex(ConfigurationError, expected_error_message):
+            DummyMeteologgerStorage(config["sectioname"])
 
 
 class MeteologgerStorageGetRecentDataTestCase(TestCase):
     def setUp(self):
-        self.storage = DummyMeteologgerStorage(
+        config = configparser.ConfigParser()
+        config.read_dict(
             {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "dummy",
-                "timezone": "Etc/GMT-2",
+                "sectioname": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "dummy",
+                    "timezone": "Etc/GMT-2",
+                }
             }
         )
+        self.storage = DummyMeteologgerStorage(config["sectioname"])
         self.result = self.storage.get_recent_data(
             15, dt.datetime(2019, 2, 27, 12, 52, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
@@ -123,14 +151,18 @@ class MeteologgerStorageGetRecentDataTestCase(TestCase):
 
 class MeteologgerStorageGetRecentDataWrongOrderTestCase(TestCase):
     def setUp(self):
-        self.storage = DummyWrongOrderMeteologgerStorage(
+        config = configparser.ConfigParser()
+        config.read_dict(
             {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "dummy",
-                "timezone": "Etc/GMT-2",
+                "sectioname": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "dummy",
+                    "timezone": "Etc/GMT-2",
+                }
             }
         )
+        self.storage = DummyWrongOrderMeteologgerStorage(config["sectioname"])
 
     def test_exception(self):
         msg = "incorrectly ordered after 2019-02-27 10:54:00 UTC"
@@ -153,18 +185,22 @@ class PatchableDatetime(dt.datetime):
 
 class MeteologgerStorageFixDstTestCase(TestCase):
     def setUp(self):
-        self.storage = DummyMeteologgerStorage(
+        config = configparser.ConfigParser()
+        config.read_dict(
             {
-                "station_id": 1334,
-                "path": "irrelevant",
-                "storage_format": "dummy",
-                "timezone": "Europe/Athens",
+                "sectioname": {
+                    "station_id": 1334,
+                    "path": "irrelevant",
+                    "storage_format": "dummy",
+                    "timezone": "Europe/Athens",
+                }
             }
         )
+        self.storage = DummyMeteologgerStorage(config["sectioname"])
 
     def test_date_without_dst(self):
         self.assertEqual(
-            self.storage._get_datetime_with_correct_fold(
+            self.storage._get_datetime_with_correct_fold(  # type: ignore
                 dt.datetime(2019, 2, 27, 13, 39, tzinfo=ZoneInfo("Europe/Athens"))
             ),
             dt.datetime(2019, 2, 27, 11, 39, tzinfo=dt.timezone.utc),
@@ -172,7 +208,7 @@ class MeteologgerStorageFixDstTestCase(TestCase):
 
     def test_date_with_dst(self):
         self.assertEqual(
-            self.storage._get_datetime_with_correct_fold(
+            self.storage._get_datetime_with_correct_fold(  # type: ignore
                 dt.datetime(2019, 4, 27, 13, 39, tzinfo=ZoneInfo("Europe/Athens"))
             ),
             dt.datetime(2019, 4, 27, 10, 39, tzinfo=dt.timezone.utc),
@@ -183,9 +219,9 @@ class MeteologgerStorageFixDstTestCase(TestCase):
         return_value=dt.datetime(2018, 10, 28, 2, 0, tzinfo=dt.timezone.utc),
     )
     @patch("loggertodb.meteologgerstorage.dt.datetime", new=PatchableDatetime)
-    def test_ambiguous_date_after_dst_switch(self, m):
+    def test_ambiguous_date_after_dst_switch(self, m: MagicMock):
         self.assertEqual(
-            self.storage._get_datetime_with_correct_fold(
+            self.storage._get_datetime_with_correct_fold(  # type: ignore
                 dt.datetime(2018, 10, 28, 3, 30, tzinfo=ZoneInfo("Europe/Athens"))
             ).astimezone(dt.timezone.utc),
             dt.datetime(2018, 10, 28, 1, 30, tzinfo=dt.timezone.utc),
@@ -196,15 +232,15 @@ class MeteologgerStorageFixDstTestCase(TestCase):
         return_value=dt.datetime(2018, 10, 28, 0, 0, tzinfo=dt.timezone.utc),
     )
     @patch("loggertodb.meteologgerstorage.dt.datetime", new=PatchableDatetime)
-    def test_ambiguous_date_before_dst_switch(self, m):
+    def test_ambiguous_date_before_dst_switch(self, m: MagicMock):
         # See it once
-        self.storage._get_datetime_with_correct_fold(
+        self.storage._get_datetime_with_correct_fold(  # type: ignore
             dt.datetime(2018, 10, 28, 3, 30, tzinfo=ZoneInfo("Europe/Athens"))
         )
 
         # Then see it again
         self.assertEqual(
-            self.storage._get_datetime_with_correct_fold(
+            self.storage._get_datetime_with_correct_fold(  # type: ignore
                 dt.datetime(2018, 10, 28, 3, 30, tzinfo=ZoneInfo("Europe/Athens"))
             ).astimezone(dt.timezone.utc),
             dt.datetime(2018, 10, 28, 0, 30, tzinfo=dt.timezone.utc),

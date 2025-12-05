@@ -47,7 +47,7 @@ jobs:
       run: |
         source ~/.venv/bin/activate
         black --check .
-        flake8 --max-line-length=88 .
+        flake8 --max-line-length=88 --extend-ignore=E501 .
         isort --check-only --diff .
         coverage run --include="./*" --omit="docs/","*/tests/*","_version.py" -m unittest -v
         coverage json

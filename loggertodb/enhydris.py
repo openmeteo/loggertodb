@@ -1,23 +1,31 @@
+from __future__ import annotations
+
 import datetime as dt
-from collections import namedtuple
+from logging import Logger
+from typing import TYPE_CHECKING, NamedTuple
 
 from enhydris_api_client import EnhydrisApiClient
 from htimeseries import HTimeseries
 
-CompositeTimeseriesId = namedtuple(
-    "CompositeTimeseriesId", ("timeseries_group_id", "timeseries_id")
-)
+from .meteologgerstorage import MeteologgerStorage
+
+if TYPE_CHECKING:
+    from .cli import Configuration
+
+class CompositeTimeseriesId(NamedTuple):
+    timeseries_group_id: int
+    timeseries_id: int
 
 
 class Enhydris:
-    def __init__(self, configuration, logger):
+    def __init__(self, configuration: Configuration, logger: Logger):
         self.base_url = configuration.base_url
         self.auth_token = configuration.auth_token
         self.max_records = configuration.max_records
         self.client = EnhydrisApiClient(self.base_url, self.auth_token)
         self.logger = logger
 
-    def upload(self, meteologger_storage):
+    def upload(self, meteologger_storage: "MeteologgerStorage"):
         self._meteologger_storage = meteologger_storage
         self._get_composite_timeseries_ids()
         self._get_ts_end_dates()
@@ -26,21 +34,21 @@ class Enhydris:
     def _get_composite_timeseries_ids(self):
         """Create a list of (timeseries_group_id, initial_timeseries_id) pairs."""
         station_id = self._meteologger_storage.station_id
-        self._composite_timeseries_ids = []
+        self._composite_timeseries_ids: list[CompositeTimeseriesId] = []
         for timeseries_group_id in self._meteologger_storage.timeseries_group_ids:
             timeseries_id = self._get_timeseries_id(station_id, timeseries_group_id)
             self._composite_timeseries_ids.append(
                 CompositeTimeseriesId(timeseries_group_id, timeseries_id)
             )
 
-    def _get_timeseries_id(self, station_id, timeseries_group_id):
+    def _get_timeseries_id(self, station_id: int, timeseries_group_id: int) -> int:
         timeseries = self.client.list_timeseries(station_id, timeseries_group_id)
         for item in timeseries:
             if item["type"] == "Initial":
                 return item["id"]
         return self._create_timeseries(station_id, timeseries_group_id)
 
-    def _create_timeseries(self, station_id, timeseries_group_id):
+    def _create_timeseries(self, station_id: int, timeseries_group_id: int) -> int:
         return self.client.post_timeseries(
             station_id,
             timeseries_group_id,
@@ -55,7 +63,7 @@ class Enhydris:
         station_id = self._meteologger_storage.station_id
         start_of_time = dt.datetime(1700, 1, 1, tzinfo=dt.timezone.utc)
         utc = dt.timezone.utc
-        self._ts_end_dates = {}
+        self._ts_end_dates: dict[CompositeTimeseriesId, dt.datetime] = {}
         for cts_id in self._composite_timeseries_ids:
             e = self.client.get_ts_end_date(station_id, *cts_id, timezone="Etc/GMT")
             assert e is None or e.tzinfo is None

@@ -28,7 +28,7 @@ class UnsupportedFormat(Exception):
 )
 @click.argument("configfile")
 @click.version_option(version=__version__, prog_name="loggertodb")
-def main(upgrade, configfile):
+def main(upgrade: bool, configfile: str):
     """Insert meteorological logger data to Enhydris"""
     if upgrade:
         ConfigFile(configfile).upgrade()
@@ -37,7 +37,7 @@ def main(upgrade, configfile):
 
 
 class LoggerToDb:
-    def __init__(self, configfile):
+    def __init__(self, configfile: str):
         self.configfile = configfile
         self.logging_system = Logging()
 
@@ -76,7 +76,7 @@ class Logging:
         self.stdout_handler = logging.StreamHandler()
         self.logger.addHandler(self.stdout_handler)
 
-    def setup_logger(self, configuration):
+    def setup_logger(self, configuration: "Configuration"):
         self.logger.setLevel(configuration.loglevel.upper())
         if configuration.logfile:
             self.logger.removeHandler(self.stdout_handler)
@@ -92,13 +92,13 @@ class Logging:
 
 
 class Configuration:
-    def __init__(self, configfile, logging_system):
+    def __init__(self, configfile: str, logging_system: Logging):
         self.logging_system = logging_system
         self.configfile = configfile
         self.config = configparser.ConfigParser(interpolation=None)
         with open(self.configfile) as f:
             self.config.read_file(f)
-        self.meteologger_storages = []
+        self.meteologger_storages: list[meteologgerstorage.MeteologgerStorage] = []
 
     def read(self):
         self._read_general_section()

@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import datetime as dt
+from typing import Any
 from unittest import TestCase
 from unittest.mock import MagicMock, call, patch
 
@@ -7,18 +10,18 @@ import pandas as pd
 from loggertodb.enhydris import Enhydris
 
 
-@patch("loggertodb.enhydris.HTimeseries", new=lambda x: x)
+@patch("loggertodb.enhydris.HTimeseries", new=lambda x: x)  # type: ignore
 class UploadTestCase(TestCase):
     @patch("loggertodb.enhydris.EnhydrisApiClient")
-    def setUp(self, mock_EnhydrisApiClient):
+    def setUp(self, mock_EnhydrisApiClient: MagicMock):
         self.EnhydrisApiClient = mock_EnhydrisApiClient
         self.MeteologgerStorage = MagicMock()
         self.enhydris = Enhydris(MagicMock(), MagicMock())
 
-    def _configure_EnhydrisApiClient(self, attribute, value):
+    def _configure_EnhydrisApiClient(self, attribute: str, value: Any):
         self.EnhydrisApiClient.configure_mock(**{f"return_value.{attribute}": value})
 
-    def _configure_MeteologgerStorage(self, attribute, value):
+    def _configure_MeteologgerStorage(self, attribute: str, value: Any):
         self.MeteologgerStorage.configure_mock(**{f"return_value.{attribute}": value})
 
     def _setup_get_ts_end_date(self):
@@ -138,15 +141,15 @@ class UploadTestCase(TestCase):
 
 class MaxRecordsTestCase(TestCase):
     @patch("loggertodb.enhydris.EnhydrisApiClient")
-    def setUp(self, mock_EnhydrisApiClient):
+    def setUp(self, mock_EnhydrisApiClient: MagicMock):
         self.EnhydrisApiClient = mock_EnhydrisApiClient
         self.MeteologgerStorage = MagicMock()
         self.enhydris = Enhydris(MagicMock(), MagicMock())
 
-    def _configure_MeteologgerStorage(self, attribute, value):
+    def _configure_MeteologgerStorage(self, attribute: str, value: Any):
         self.MeteologgerStorage.configure_mock(**{f"return_value.{attribute}": value})
 
-    def _configure_EnhydrisApiClient(self, attribute, value):
+    def _configure_EnhydrisApiClient(self, attribute: str, value: Any):
         self.EnhydrisApiClient.configure_mock(**{f"return_value.{attribute}": value})
 
     def _setup_get_ts_end_date(self):
@@ -170,6 +173,6 @@ class MaxRecordsTestCase(TestCase):
         self._setup_get_ts_end_date()
         self.enhydris.max_records = 2
         self.enhydris.upload(self.MeteologgerStorage())
-        args, kwargs = self.EnhydrisApiClient.return_value.post_tsdata.call_args
+        args, _ = self.EnhydrisApiClient.return_value.post_tsdata.call_args
         ahtimeseries = args[3]
         self.assertEqual(len(ahtimeseries.data), 2)

@@ -2,8 +2,9 @@ import os
 import shutil
 import textwrap
 from tempfile import NamedTemporaryFile, mkdtemp
+from typing import Any
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from click import ClickException
 from click.testing import CliRunner
@@ -99,7 +100,7 @@ class ConfigurationWithNoMeteologgersTestCase(TestCase):
 
 class ConfigurationWithUnsupportedFormatTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
-    def setUp(self, mock_enhydris):
+    def setUp(self, mock_enhydris: MagicMock):
         runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
@@ -126,7 +127,7 @@ class ConfigurationWithUnsupportedFormatTestCase(TestCase):
 
 class ConfigurationWithWrongMaxRecordsTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
-    def setUp(self, mock_enhydris):
+    def setUp(self, mock_enhydris: MagicMock):
         runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
@@ -152,7 +153,7 @@ class ConfigurationWithWrongMaxRecordsTestCase(TestCase):
 class CorrectConfigurationTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
-    def setUp(self, mock_meteologgerstorage, mock_enhydris):
+    def setUp(self, mock_meteologgerstorage: MagicMock, mock_enhydris: MagicMock):
         self.mock_meteologgerstorage = mock_meteologgerstorage
         self.mock_enhydris = mock_enhydris
         runner = CliRunner()
@@ -197,9 +198,9 @@ class CorrectConfigurationTestCase(TestCase):
 class CorrectConfigurationWithLogFileTestCase(TestCase):
     @patch("loggertodb.cli.Enhydris")
     @patch("loggertodb.meteologgerstorage.MeteologgerStorage_simple")
-    def test_creates_log_file(self, *args):
-        self.mock_meteologgerstorage = args[0]
-        self.mock_enhydris = args[1]
+    def test_creates_log_file(self, m1: MagicMock, m2: MagicMock):
+        self.mock_meteologgerstorage = m1
+        self.mock_enhydris = m2
         runner = CliRunner()
         with runner.isolated_filesystem():
             with open("loggertodb.conf", "w") as f:
@@ -232,12 +233,12 @@ class AllowOverlapsTestCase(TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
-    def _run_with_config(self, config):
+    def _run_with_config(self, config: str):
         with open(self.configpathname, "w") as tmpfile:
             tmpfile.write(config)
         LoggerToDb(self.configpathname).run()
 
-    def test_no(self, *args):
+    def test_no(self, *args: Any):
         self._run_with_config(
             textwrap.dedent(
                 f"""\
@@ -258,7 +259,7 @@ class AllowOverlapsTestCase(TestCase):
         )
         # If it hasn't raised exception, it's OK
 
-    def test_garbage(self, *args):
+    def test_garbage(self, *args: Any):
         with self.assertRaises(ClickException):
             self._run_with_config(
                 textwrap.dedent(
@@ -299,10 +300,10 @@ class UploadErrorTestCase(TestCase):
     @patch("loggertodb.cli.logging")
     @patch("loggertodb.cli.sys.stderr.write")
     @patch("loggertodb.cli.Enhydris")
-    def setUp(self, mock_enhydris, mock_stderr_write, mock_logging):
-        self.mock_enhydris = mock_enhydris
-        self.mock_stderr_write = mock_stderr_write
-        self.mock_logging = mock_logging
+    def setUp(self, m1: MagicMock, m2: MagicMock, m3: MagicMock):
+        self.mock_enhydris = m1
+        self.mock_stderr_write = m2
+        self.mock_logging = m3
         self.mock_enhydris.return_value.upload.side_effect = LoggerToDbError(
             "hello world"
         )

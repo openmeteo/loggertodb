@@ -1,7 +1,9 @@
 import configparser
 import datetime as dt
+import os
 import textwrap
-from zoneinfo import ZoneInfo
+from typing import Any
+from zoneinfo import TZPATH, ZoneInfo
 
 import pandas as pd
 from pyfakefs.fake_filesystem_unittest import TestCase
@@ -14,12 +16,12 @@ from loggertodb.meteologgerstorage import (
 
 
 class DummyMultiTextFileMeteologgerStorage(MultiTextFileMeteologgerStorage):
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str):
         result = dt.datetime.strptime(line[:16], "%Y-%m-%d %H:%M")
         result = result.replace(tzinfo=ZoneInfo("Etc/GMT-2"))
         return result
 
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int):
         line_items = line.strip().split(",")[1:]
         item = line_items[seq - 1]
         item_items = item.split()
@@ -35,7 +37,7 @@ class GetStorageTailTestCase(TestCase):
         self._create_files()
 
     def _get_meteologger_storage(self):
-        parms = {
+        parms: dict[str, Any] = {
             "station_id": 1334,
             "path": "/foo/bar?",
             "storage_format": "dummy",
@@ -54,9 +56,9 @@ class GetStorageTailTestCase(TestCase):
         self._create_test_file("/foo/bar2", 2019)
         self._create_test_file("/foo/bar3", 2017)
 
-    def _create_test_file(self, pathname, year):
+    def _create_test_file(self, pathname: str, year: int):
         headers = "Date,value1,value2\n" if self.use_headers_in_files else ""
-        self.fs.create_file(
+        self.fs.create_file(  # type: ignore[no-untyped-call]
             pathname,
             contents=textwrap.dedent(
                 """\
@@ -70,7 +72,7 @@ class GetStorageTailTestCase(TestCase):
         )
 
     def test_get_storage_tail_from_last_file(self):
-        self.result = self.meteologger_storage._get_storage_tail(
+        self.result = self.meteologger_storage._get_storage_tail(  # type: ignore
             dt.datetime(2019, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         self.assertEqual(
@@ -87,7 +89,7 @@ class GetStorageTailTestCase(TestCase):
         )
 
     def test_get_storage_tail_from_last_but_one_file(self):
-        self.result = self.meteologger_storage._get_storage_tail(
+        self.result = self.meteologger_storage._get_storage_tail(  # type: ignore
             dt.datetime(2018, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         self.assertEqual(
@@ -118,7 +120,7 @@ class GetStorageTailTestCase(TestCase):
         )
 
     def test_get_storage_tail_from_all_files(self):
-        self.result = self.meteologger_storage._get_storage_tail(
+        self.result = self.meteologger_storage._get_storage_tail(  # type: ignore
             dt.datetime(2016, 2, 28, 17, 20, tzinfo=ZoneInfo("Etc/GMT-2"))
         )
         self.assertEqual(
@@ -191,7 +193,7 @@ class GetStorageTailNoFilesTestCase(TestCase):
         return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def test_get_storage_tail_returns_empty_list(self):
-        result = self.meteologger_storage._get_storage_tail(
+        result = self.meteologger_storage._get_storage_tail(  # type: ignore
             dt.datetime(2016, 2, 28, 17, 20)
         )
         self.assertEqual(len(result), 0)
@@ -203,7 +205,7 @@ class GetStorageTailWithHeadersTestCase(GetStorageTailTestCase):
 
 class GetStorageTailMultilinePathTestCase(GetStorageTailTestCase):
     def _get_meteologger_storage(self):
-        parms = {
+        parms: dict[str, Any] = {
             "station_id": 1334,
             "path": "/foo/bar1\n /foo/bar2\n /foo/bar3",
             "storage_format": "dummy",
@@ -220,7 +222,7 @@ class GetStorageTailMultilinePathTestCase(GetStorageTailTestCase):
 
 class GetStorageTailMultilinePathWithPatternsTestCase(GetStorageTailTestCase):
     def _get_meteologger_storage(self):
-        parms = {
+        parms: dict[str, Any] = {
             "station_id": 1334,
             "path": "/foo/bar1\n /foo/bar?",
             "storage_format": "dummy",
@@ -242,7 +244,7 @@ class GetStorageTailEmptyFileTestCase(TestCase):
         self._create_files()
 
     def _get_meteologger_storage(self):
-        parms = {
+        parms: dict[str, Any] = {
             "station_id": 1334,
             "path": "/foo/bar?",
             "storage_format": "dummy",
@@ -260,17 +262,17 @@ class GetStorageTailEmptyFileTestCase(TestCase):
         self._create_test_file("/foo/bar2", 2019)
         self._create_test_file("/foo/bar3", None)
 
-    def _create_test_file(self, pathname, year):
+    def _create_test_file(self, pathname: str, year: int | None):
         if year is None:
             self._create_empty_test_file(pathname)
         else:
             self._create_test_file_with_records(pathname, year)
 
-    def _create_empty_test_file(self, pathname):
-        self.fs.create_file(pathname, contents="Date,value1,value2\n")
+    def _create_empty_test_file(self, pathname: str):
+        self.fs.create_file(pathname, contents="Date,value1,value2\n")  # type: ignore
 
-    def _create_test_file_with_records(self, pathname, year):
-        self.fs.create_file(
+    def _create_test_file_with_records(self, pathname: str, year: int):
+        self.fs.create_file(  # type: ignore
             pathname,
             contents=textwrap.dedent(
                 """\
@@ -284,7 +286,7 @@ class GetStorageTailEmptyFileTestCase(TestCase):
         )
 
     def test_get_entire_storage_tail(self):
-        self.result = self.meteologger_storage._get_storage_tail(
+        self.result = self.meteologger_storage._get_storage_tail(  # type: ignore
             dt.datetime(1700, 1, 1, 0, 0, tzinfo=dt.timezone.utc)
         )
         self.assertEqual(len(self.result), 4)
@@ -314,7 +316,7 @@ class BadFileOrder(TestCase):
         return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def _create_file(self):
-        self.fs.create_file(
+        self.fs.create_file(  # type: ignore
             "/foo/bar1",
             contents=textwrap.dedent(
                 """\
@@ -339,7 +341,7 @@ class FilesWithOverlap(TestCase):
         self._create_file1()
         self._create_file2()
 
-    def _get_meteologger_storage(self, *, allow_overlaps):
+    def _get_meteologger_storage(self, *, allow_overlaps: bool):
         cfg = configparser.ConfigParser(interpolation=None)
         cfg.read_dict(
             {
@@ -358,7 +360,7 @@ class FilesWithOverlap(TestCase):
         return DummyMultiTextFileMeteologgerStorage(cfg["mystation"])
 
     def _create_file1(self):
-        self.fs.create_file(
+        self.fs.create_file(  # type: ignore
             "/foo/bar1",
             contents=textwrap.dedent(
                 """\
@@ -370,7 +372,7 @@ class FilesWithOverlap(TestCase):
         )
 
     def _create_file2(self):
-        self.fs.create_file(
+        self.fs.create_file(  # type: ignore
             "/foo/bar2",
             contents=textwrap.dedent(
                 """\
@@ -413,7 +415,10 @@ class FilesWithOverlap(TestCase):
 
 class FileWithBadLine(TestCase):
     def setUp(self):
+        dirs = [dir for dir in TZPATH if os.path.isdir(dir)]
         self.setUpPyfakefs()
+        for dir in dirs:
+            self.fs.add_real_directory(dir)  # type: ignore
         self.meteologger_storage = self._get_meteologger_storage()
         self._create_file()
 
@@ -436,7 +441,7 @@ class FileWithBadLine(TestCase):
         return MeteologgerStorage_simple(cfg["mystation"])
 
     def _create_file(self):
-        self.fs.create_file(
+        self.fs.create_file(  # type: ignore
             "/foo/bar1",
             contents=(
                 b"id,Date,value1,value2\n"

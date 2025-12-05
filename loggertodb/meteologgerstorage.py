@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import configparser
 import datetime as dt
 import logging
 import os
@@ -5,12 +8,13 @@ import re
 import struct
 from abc import ABC, abstractmethod
 from glob import glob
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 import iso8601
 import numpy as np
 import pandas as pd
-from simpletail import ropen
+from simpletail import ropen  # type: ignore
 
 from .exceptions import ConfigurationError, MeteologgerStorageReadError
 
@@ -18,7 +22,15 @@ pyodbc = None
 
 
 class MeteologgerStorage(ABC):
-    def __init__(self, parameters, *, max_records=10000, logger=None):
+    null: str
+
+    def __init__(
+        self,
+        parameters: configparser.SectionProxy,
+        *,
+        max_records: int = 10000,
+        logger: logging.Logger | None = None,
+    ):
         self._reset_ambiguous_hour_data()
         self.__check_parameters(parameters)
         self.station_id = int(parameters["station_id"])
@@ -26,13 +38,14 @@ class MeteologgerStorage(ABC):
         self.max_records = max_records
         self.timezone = parameters["timezone"]
         self.tzinfo = ZoneInfo(self.timezone)
-        self.logger = logger
-        if not self.logger:
+        if logger:
+            self.logger = logger
+        else:
             self.logger = logging.getLogger("loggerstorage")
             self.logger.setLevel(logging.WARNING)
             self.logger.addHandler(logging.StreamHandler())
 
-    def __check_parameters(self, parameters):
+    def __check_parameters(self, parameters: configparser.SectionProxy):
         # Check that all required parameters are present
         for parameter in self.get_required_parameters():
             if parameter not in parameters:
@@ -46,10 +59,12 @@ class MeteologgerStorage(ABC):
 
     @property
     @abstractmethod
-    def timeseries_group_ids(self):
+    def timeseries_group_ids(self) -> set[int]:
         pass
 
-    def get_recent_data(self, ts_group_id, after_timestamp):
+    def get_recent_data(
+        self, ts_group_id: int, after_timestamp: dt.datetime
+    ) -> pd.DataFrame:
         self._reset_ambiguous_hour_data()
         cached_after_timestamp = getattr(
             self,
@@ -59,28 +74,29 @@ class MeteologgerStorage(ABC):
         if after_timestamp < cached_after_timestamp:
             self._extract_data(after_timestamp=after_timestamp)
         from_timestamp = after_timestamp + dt.timedelta(seconds=1)
-        self._check_monotonic(self._cached_data[ts_group_id].index)
+        self._check_monotonic(self._cached_data[ts_group_id].index)  # type: ignore
         return self._cached_data[ts_group_id].loc[from_timestamp:]
 
-    def _check_monotonic(self, index):
+    def _check_monotonic(self, index: pd.DatetimeIndex):
         if index.is_monotonic_increasing:
             return
         else:
             self._raise_monotonic_exception(index)
 
-    def _raise_monotonic_exception(self, index):
+    def _raise_monotonic_exception(self, index: pd.DatetimeIndex):
         offending_date = self._locate_first_nonmonotonic_date(index)
         date_str = offending_date.isoformat(sep=" ")[:19] + " UTC"
         raise ValueError(f"Data is incorrectly ordered after {date_str}")
 
-    def _locate_first_nonmonotonic_date(self, index):
+    def _locate_first_nonmonotonic_date(self, index: pd.DatetimeIndex) -> dt.datetime:
         prev = None
         for current in index:
             if prev is not None and prev > current:
                 return prev
             prev = current
+        assert False, "Should not reach here"
 
-    def _extract_data(self, after_timestamp):
+    def _extract_data(self, after_timestamp: dt.datetime):
         """Extract the part of the storage that is after_timestamp.
 
         Reads the part of the storage that is after_timestamp and puts it in
@@ -103,7 +119,7 @@ class MeteologgerStorage(ABC):
             )
 
         # Start with empty time series
-        index = []
+        index: list[dt.datetime] = []
         data = {
             ts_id: np.empty((len(storage_tail), 2), dtype=object)
             for ts_id in self.timeseries_group_ids
@@ -111,17 +127,17 @@ class MeteologgerStorage(ABC):
 
         # Iterate through the storage tail and fill in the time series
         filename = None
-        try:
-            for i, record in enumerate(storage_tail):
-                filename = record.get("filename")
-                index.append(record["timestamp"])
+        for i, record in enumerate(storage_tail):
+            filename = record.get("filename", "")
+            index.append(record["timestamp"])
+            try:
                 for ts_id in self.timeseries_group_ids:
                     v, f = self._extract_value_and_flags(ts_id, record)
                     data[ts_id][i, 0] = v
                     data[ts_id][i, 1] = f
-        except ValueError as e:
-            message = "parsing error while trying to read values: " + str(e)
-            self._raise_error(record["line"], message, filename)
+            except ValueError as e:
+                message = "parsing error while trying to read values: " + str(e)
+                self._raise_error(record["line"], message, filename)
 
         # Replace self._cached_data and self._after_timestamp, if any
         self._cached_data = {
@@ -135,7 +151,7 @@ class MeteologgerStorage(ABC):
         self._cached_after_timestamp = after_timestamp
 
     @abstractmethod
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         """Read the part of the data storage after_timestamp.
 
         Returns a list of dictionaries. Each of these dictionaries is a measurement
@@ -149,10 +165,10 @@ class MeteologgerStorage(ABC):
         """
 
     def _reset_ambiguous_hour_data(self):
-        self._ambiguous_timestamps_already_seen = set()
+        self._ambiguous_timestamps_already_seen: set[dt.datetime] = set()
         self._we_are_in_the_second_occurrence_of_the_ambigous_hour = False
 
-    def _get_datetime_with_correct_fold(self, adatetime):
+    def _get_datetime_with_correct_fold(self, adatetime: dt.datetime) -> dt.datetime:
         if self._datetime_is_ambiguous(adatetime):
             fold = self._determine_fold_for_ambiguous_hour(adatetime)
             return adatetime.replace(fold=fold)
@@ -160,13 +176,13 @@ class MeteologgerStorage(ABC):
             self._reset_ambiguous_hour_data()
             return adatetime
 
-    def _datetime_is_ambiguous(self, adatetime):
+    def _datetime_is_ambiguous(self, adatetime: dt.datetime) -> bool:
         utc = dt.timezone.utc
         return adatetime.replace(fold=0).astimezone(utc) != adatetime.replace(
             fold=1
         ).astimezone(utc)
 
-    def _determine_fold_for_ambiguous_hour(self, adatetime):
+    def _determine_fold_for_ambiguous_hour(self, adatetime: dt.datetime) -> int:
         if self._switch_has_not_occurred(adatetime):
             return 0
         if self._we_are_in_the_second_occurrence_of_the_ambigous_hour:
@@ -177,13 +193,13 @@ class MeteologgerStorage(ABC):
         self._ambiguous_timestamps_already_seen.add(adatetime)
         return 1
 
-    def _switch_has_not_occurred(self, adatetime):
+    def _switch_has_not_occurred(self, adatetime: dt.datetime) -> bool:
         now = dt.datetime.now(dt.timezone.utc)
         if abs(adatetime - now) > dt.timedelta(hours=24):
             return False
         return bool(now.dst())
 
-    def _raise_error(self, line, msg, filename=None):
+    def _raise_error(self, line: str, msg: str, filename: str = ""):
         filename = filename or getattr(self, "filename", self.path)
         errmessage = '{}: "{}": {}'.format(filename, line, msg)
         self.logger.error("Error while parsing, message: " + errmessage)
@@ -192,14 +208,16 @@ class MeteologgerStorage(ABC):
     def get_required_parameters(self):
         return {"path", "storage_format", "station_id", "timezone"}
 
-    def get_optional_parameters(self):
+    def get_optional_parameters(self) -> set[str]:
         return set()
 
     @abstractmethod
-    def _extract_value_and_flags(self, ts_id, record):
+    def _extract_value_and_flags(
+        self, ts_id: int, record: dict[str, Any]
+    ) -> tuple[Any, str]:
         pass
 
-    def _is_null(self, value):
+    def _is_null(self, value: str) -> bool:
         if not self.null:
             return False
         try:
@@ -210,7 +228,13 @@ class MeteologgerStorage(ABC):
 
 
 class TextFileMeteologgerStorage(MeteologgerStorage):
-    def __init__(self, parameters, *, max_records=10000, logger=None):
+    def __init__(
+        self,
+        parameters: configparser.SectionProxy,
+        *,
+        max_records: int = 10000,
+        logger: logging.Logger | None = None,
+    ):
         super().__init__(parameters, max_records=max_records, logger=logger)
         self.fields = [int(x) for x in parameters.get("fields", "").split(",") if x]
         self.subset_identifiers = parameters.get("subset_identifiers", "")
@@ -239,34 +263,38 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
     def timeseries_group_ids(self):
         return set(self.fields) - {0}
 
-    def _subset_identifiers_match(self, line):
+    def _subset_identifiers_match(self, line: str) -> bool:
         return True
 
     @abstractmethod
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str) -> dt.datetime:
         pass
 
-    def _extract_value_and_flags(self, ts_id, record):
+    def _extract_value_and_flags(
+        self, ts_id: int, record: dict[str, Any]
+    ) -> tuple[Any, str]:
+        seq = None
         for seq, tid in enumerate(self.fields, start=1):
             if tid == ts_id:
                 break
+        assert seq is not None
         v, f = self._get_item_from_line(record["line"], seq)
         if self.decimal_separator and (self.decimal_separator != "."):
             v = v.replace(self.decimal_separator, ".")
         return v, f
 
     @abstractmethod
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int) -> tuple[Any, str]:
         pass
 
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         return self._get_storage_tail_from_file(self.path, after_timestamp)[0]
 
-    def _get_storage_tail_from_file(self, filename, after_timestamp):
-        if self.allow_overlaps:
-            records_dict = {}
-        else:
-            records_list = []
+    def _get_storage_tail_from_file(
+        self, filename: str, after_timestamp: dt.datetime
+    ) -> tuple[list[dict[str, Any]], bool]:
+        records_dict: dict[dt.datetime, dict[str, Any]] = {}  # Used if allow_overlaps
+        records_list: list[dict[str, Any]] = []  # Used if not allow_overlaps
         with ropen(filename, encoding=self.encoding, errors="replace") as xr:
             reached_after_timestamp = False
             prev_timestamp = ""
@@ -280,7 +308,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
                 timestamp = self._extract_timestamp(line).replace(second=0)
                 timestamp = self._get_datetime_with_correct_fold(timestamp)
                 timestamp = timestamp.astimezone(dt.timezone.utc)
-                record = {
+                record: dict[str, Any] = {
                     "timestamp": timestamp,
                     "line": line,
                     "filename": filename,
@@ -309,7 +337,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
         records_list.reverse()
         return (records_list, reached_after_timestamp)
 
-    def _must_ignore_line(self, line):
+    def _must_ignore_line(self, line: str) -> bool:
         if not line.strip() or not self._subset_identifiers_match(line):
             return True
         if not self.ignore_lines:
@@ -318,7 +346,7 @@ class TextFileMeteologgerStorage(MeteologgerStorage):
 
 
 class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         self._get_files()
         if not self.allow_overlaps:
             self._sort_files()
@@ -328,8 +356,8 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
         return result
 
     def _get_files(self):
-        self._files = []
-        seen = set()
+        self._files: list[dict[str, Any]] = []
+        seen: set[str] = set()
         paths = [p.strip() for p in self.path.splitlines() if p.strip()]
         for pattern in paths:
             for filename in glob(pattern):
@@ -344,13 +372,13 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
         self._files.sort(key=lambda x: x["last_date"] or start_of_epoch)
 
     def _get_file(self):
-        result = {"filename": self.filename}
+        result: dict[str, Any] = {"filename": self.filename}
         if not self.allow_overlaps:
             result["first_date"] = self._extract_first_date_from_file(self.filename)
             result["last_date"] = self._extract_last_date_from_file(self.filename)
         return result
 
-    def _extract_first_date_from_file(self, filename):
+    def _extract_first_date_from_file(self, filename: str):
         with open(filename, encoding=self.encoding, errors="replace") as f:
             for line in f:
                 if self._must_ignore_line(line):
@@ -360,7 +388,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 return timestamp
         return None
 
-    def _extract_last_date_from_file(self, filename):
+    def _extract_last_date_from_file(self, filename: str):
         with ropen(filename, encoding=self.encoding, errors="replace") as xr:
             for line in xr:
                 if self._must_ignore_line(line):
@@ -370,7 +398,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 return timestamp
         return None
 
-    def _get_storage_tail_from_multiple_files(self, after_timestamp):
+    def _get_storage_tail_from_multiple_files(self, after_timestamp: dt.datetime):
         result = []
         for file in reversed(self._files):
             partial_result, reached_after_timestamp = self._get_storage_tail_from_file(
@@ -381,14 +409,14 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 break
         return result
 
-    def _fix_overlaps(self, records):
-        new_records = {}
+    def _fix_overlaps(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        new_records: dict[dt.datetime, dict[str, Any]] = {}
         for record in records:
             timestamp = record["timestamp"]
             new_records[timestamp] = record
         return [v for _, v in sorted(new_records.items())]
 
-    def _raise_monotonic_exception(self, index):
+    def _raise_monotonic_exception(self, index: pd.DatetimeIndex):
         self._check_file_order()
         super()._raise_monotonic_exception(index)
 
@@ -400,7 +428,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
                 self._check_adjacent_file_dates(previous_file, file)
             previous_file = file
 
-    def _check_file_dates(self, file):
+    def _check_file_dates(self, file: dict[str, Any]):
         if file["first_date"] is None and file["last_date"] is None:
             return
         assert file["first_date"] is not None and file["last_date"] is not None
@@ -410,7 +438,7 @@ class MultiTextFileMeteologgerStorage(TextFileMeteologgerStorage):
             "The order of timestamps in file {} is mixed up.".format(file["filename"])
         )
 
-    def _check_adjacent_file_dates(self, file1, file2):
+    def _check_adjacent_file_dates(self, file1: dict[str, Any], file2: dict[str, Any]):
         if file1["last_date"] is None or file2["first_date"] is None:
             return
         if file1["last_date"] < file2["first_date"]:
@@ -430,13 +458,13 @@ class MeteologgerStorage_deltacom(TextFileMeteologgerStorage):
         "&": "LOGRANGE",
     }
 
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str) -> dt.datetime:
         try:
-            return iso8601.parse_date(line.split()[0], default_timezone=self.tzinfo)
+            return iso8601.parse_date(line.split()[0], default_timezone=self.tzinfo)  # type: ignore
         except (ValueError, iso8601.ParseError):
             self._raise_error(line, "parse error or invalid date")
 
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int):
         flags = ""
         item = line.split()[seq].strip()
         if item[-1] in self.deltacom_flags.keys():
@@ -451,7 +479,7 @@ class MeteologgerStorage_pc208w(TextFileMeteologgerStorage):
     def get_required_parameters(self):
         return super().get_required_parameters() | {"subset_identifiers"}
 
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str) -> dt.datetime:
         try:
             items = line.split(",")
             year = int(items[2])
@@ -467,7 +495,7 @@ class MeteologgerStorage_pc208w(TextFileMeteologgerStorage):
         except (IndexError, ValueError):
             self._raise_error(line, "parse error or invalid date")
 
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int):
         try:
             item = line.split(",")[seq + 4].strip()
         except IndexError:
@@ -476,7 +504,7 @@ class MeteologgerStorage_pc208w(TextFileMeteologgerStorage):
             item = "NaN"
         return (float(item), "")
 
-    def _subset_identifiers_match(self, line):
+    def _subset_identifiers_match(self, line: str) -> bool:
         si = line.split(",")[0].strip()
         return si == self.subset_identifiers
 
@@ -485,20 +513,20 @@ class MeteologgerStorage_CR1000(TextFileMeteologgerStorage):
     def get_required_parameters(self):
         return super().get_required_parameters() | {"subset_identifiers"}
 
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str):
         try:
             datestr = line.split(",")[0].strip('"')
-            return iso8601.parse_date(datestr[:16], default_timezone=self.tzinfo)
+            return iso8601.parse_date(datestr[:16], default_timezone=self.tzinfo)  # type: ignore
         except (IndexError, iso8601.ParseError):
             self._raise_error(line, "parse error or invalid date")
 
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int):
         item = line.split(",")[seq + 3].strip()
         if self._is_null(item):
             item = "NaN"
         return (float(item), "")
 
-    def _subset_identifiers_match(self, line):
+    def _subset_identifiers_match(self, line: str) -> bool:
         si = line.split(",")[3].strip()
         return si == self.subset_identifiers
 
@@ -508,11 +536,11 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
         more_parms = {"nfields_to_ignore", "delimiter", "date_format"}
         return super().get_optional_parameters() | more_parms
 
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str) -> dt.datetime:
+        datestr = ''
         try:
             items = line.split(self.delimiter)
-            datestr = items[self.nfields_to_ignore]
-            datestr = datestr.strip().strip('"').strip()
+            datestr = items[self.nfields_to_ignore].strip().strip('"').strip()
             self._separate_time = False
             if len(datestr) <= 10:
                 datestr += " " + items[self.nfields_to_ignore + 1].strip('"')
@@ -522,7 +550,7 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
                     second=0, tzinfo=self.tzinfo
                 )
             else:
-                result = iso8601.parse_date(datestr[:16], default_timezone=self.tzinfo)
+                result = iso8601.parse_date(datestr[:16], default_timezone=self.tzinfo)  # type: ignore
             return result
         except ValueError as e:
             self._raise_error(
@@ -531,7 +559,7 @@ class MeteologgerStorage_simple(MultiTextFileMeteologgerStorage):
         except IndexError:
             self._raise_error(line.strip(), "Malformed line")
 
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int):
         index = self.nfields_to_ignore + seq + (1 if self._separate_time else 0)
         try:
             item = line.split(self.delimiter)[index].strip().strip('"').strip()
@@ -555,7 +583,7 @@ class MeteologgerStorage_lastem(TextFileMeteologgerStorage):
         more_parms = {"decimal_separator", "delimiter", "date_format"}
         return super().get_optional_parameters() | more_parms
 
-    def _extract_timestamp(self, line):
+    def _extract_timestamp(self, line: str):
         try:
             date = line.split(self.delimiter)[3]
             result = dt.datetime.strptime(date, self.date_format)
@@ -564,7 +592,7 @@ class MeteologgerStorage_lastem(TextFileMeteologgerStorage):
         except (IndexError, ValueError):
             self._raise_error(line, "parse error or invalid date")
 
-    def _get_item_from_line(self, line, seq):
+    def _get_item_from_line(self, line: str, seq: int):
         value = line.split(self.delimiter)[seq + 3]
         if self._is_null(value):
             value = "NaN"
@@ -572,13 +600,19 @@ class MeteologgerStorage_lastem(TextFileMeteologgerStorage):
             value = value.replace(self.decimal_separator, ".")
         return (float(value), "")
 
-    def _subset_identifiers_match(self, line):
+    def _subset_identifiers_match(self, line: str):
         si = [x.strip() for x in line.split(self.delimiter)[0:3]]
         si1 = [x.strip() for x in self.subset_identifiers.split(",")]
         return si == si1
 
 
 class MeteologgerStorage_wdat5(MeteologgerStorage):
+    rain_unit: str
+    temperature_unit: str
+    wind_speed_unit: str
+    pressure_unit: str
+    matric_potential_unit: str
+
     wdat_record_format = [
         "<b dataType",
         "<b archiveInterval",
@@ -663,13 +697,19 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
         )
 
     @property
-    def timeseries_group_ids(self):
+    def timeseries_group_ids(self) -> set[int]:
         return {self.variables[lab] for lab in self.variables if self.variables[lab]}
 
-    def __init__(self, parameters, *, max_records=10000, logger=None):
+    def __init__(
+        self,
+        parameters: configparser.SectionProxy,
+        *,
+        max_records: int = 10000,
+        logger: logging.Logger | None = None,
+    ):
         super().__init__(parameters, max_records=max_records, logger=logger)
 
-        self.variables = {}
+        self.variables: dict[str, Any] = {}
         for label in self.variables_labels:
             self.variables[label] = parameters.get(label)
 
@@ -690,12 +730,12 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
     def _extract_timestamp(self):
         pass
 
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         """Read the part of the data storage after_timestamp.
 
         See the docstring of the inherited method for more information.
         """
-        result = []
+        result: list[dict[str, Any]] = []
         saveddir = os.getcwd()
         try:
             os.chdir(self.path)
@@ -711,7 +751,9 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
             os.chdir(saveddir)
         return result
 
-    def _get_tail_part(self, after_timestamp, filename):
+    def _get_tail_part(
+        self, after_timestamp: dt.datetime, filename: str
+    ) -> list[dict[str, Any]]:
         """Read a single wdat5 file.
 
         Reads the single wdat5 file "filename" for records with
@@ -721,7 +763,7 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
         year, month = [
             int(x) for x in os.path.split(filename)[1].split(".")[0].split("-")
         ]
-        result = []
+        result: list[dict[str, Any]] = []
         with open(filename, "rb") as f:
             header = f.read(212)
             if header[:6] != b"WDAT5.":
@@ -750,9 +792,9 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
                     result.append(decoded_record)
         return result
 
-    def __decode_wdat_record(self, record):
+    def __decode_wdat_record(self, record: bytes) -> dict[str, Any]:
         """Decode bytes into a dictionary."""
-        result = {}
+        result: dict[str, Any] = {}
 
         # Read raw values
         offset = 0
@@ -781,8 +823,8 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
             result[x] = result[x] / 10.0
 
         # Convert rain
-        rain_collector_type = result["rain"] & 0xF000
-        rain_clicks = result["rain"] & 0x0FFF
+        rain_collector_type = cast(int, result["rain"]) & 0xF000
+        rain_clicks = cast(int, result["rain"]) & 0x0FFF
         depth_per_click = {
             0x0000: 0.1 * 25.4,
             0x1000: 0.01 * 25.4,
@@ -792,19 +834,19 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
         }[rain_collector_type]
         depth = depth_per_click * rain_clicks
         result["rain"] = depth / 25.4 if self.rain_unit == "inch" else depth
-        rate = result["hirainrate"] * depth_per_click
+        rate = cast(int, result["hirainrate"]) * depth_per_click
         result["hirainrate"] = rate / 25.4 if self.rain_unit == "inch" else rate
 
         # Convert wind speed
-        def convert_wind_speed(x):
+        def convert_wind_speed(x: float) -> float:
             return (
                 x / 10.0
                 if self.wind_speed_unit == "mph"
                 else x / 10.0 * 1609.344 / 3600
             )
 
-        result["windspeed"] = convert_wind_speed(result["windspeed"])
-        result["hiwindspeed"] = convert_wind_speed(result["hiwindspeed"])
+        result["windspeed"] = convert_wind_speed(cast(float, result["windspeed"]))
+        result["hiwindspeed"] = convert_wind_speed(cast(float, result["hiwindspeed"]))
 
         # Convert wind direction
         for x in ["winddirection", "hiwinddirection"]:
@@ -857,7 +899,10 @@ class MeteologgerStorage_wdat5(MeteologgerStorage):
 
         return result
 
-    def _extract_value_and_flags(self, ts_id, record):
+    def _extract_value_and_flags(
+        self, ts_id: int, record: dict[str, Any]
+    ) -> tuple[Any, str]:
+        v = ""
         for v, tid in self.variables.items():
             if tid == ts_id:
                 break
@@ -871,14 +916,20 @@ class MeteologgerStorage_odbc(MeteologgerStorage_simple):
     def get_optional_parameters(self):
         return super().get_optional_parameters() | {"date_format", "decimal_separator"}
 
-    def __init__(self, parameters, *, max_records=10000, logger=None):
+    def __init__(
+        self,
+        parameters: configparser.SectionProxy,
+        *,
+        max_records: int = 10000,
+        logger: logging.Logger | None = None,
+    ):
         super().__init__(parameters, max_records=max_records, logger=logger)
         self.table = parameters.get("table", "")
         self.date_sql = parameters.get("date_sql", "")
         self.data_columns = parameters.get("data_columns", "").split(",")
         self.delimiter = ";"
 
-    def _get_storage_tail(self, after_timestamp):
+    def _get_storage_tail(self, after_timestamp: dt.datetime) -> list[dict[str, Any]]:
         """Read the part of the data storage after_timestamp.
 
         See the docstring of the inherited method for more information.
@@ -889,7 +940,7 @@ class MeteologgerStorage_odbc(MeteologgerStorage_simple):
             # pyodbc, no importing will be done.
             global pyodbc
             if pyodbc is None:
-                import pyodbc
+                import pyodbc  # type: ignore
         except ImportError:
             self.logger.error("Install pyodbc to use odbc format")
             raise
@@ -898,12 +949,13 @@ class MeteologgerStorage_odbc(MeteologgerStorage_simple):
             " + ';' + ".join(['"{}"'.format(x) for x in self.data_columns]),
             self.table,
         )
-        result = []
-        connection = pyodbc.connect(self.path)
-        cursor = connection.cursor()
-        cursor.execute(sql)
-        for row in cursor:  # Iterable cursor is a pyodbc feature
-            line = row[0]  # Our SQL returns a single string
+        result: list[dict[str, Any]] = []
+        connection = pyodbc.connect(self.path)  # type: ignore
+        cursor = connection.cursor()  # type: ignore
+        cursor.execute(sql)  # type: ignore
+        for row in cursor:  # Iterable cursor is a pyodbc feature  # type: ignore
+            line = row[0]  # Our SQL returns a single string  # type: ignore
+            assert isinstance(line, str)
             self.logger.debug(line)
             date = self._extract_timestamp(line).replace(second=0)
             date = self._get_datetime_with_correct_fold(date)
