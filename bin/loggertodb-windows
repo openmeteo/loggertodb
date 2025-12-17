@@ -3,7 +3,7 @@
 Normally we shouldn't need this script. "pip install loggertodb"
 installs a "loggertodb" script which has been created because of
 pyproject.toml's [project.scripts]. However, pyinstaller, which we use
-to create a single-file loggertodb.exe on windows, does not support
+to create loggertodb.exe on windows, does not support
 "project.scripts", so we add this script which is more or less identical
 to the one created by setuptools.
 

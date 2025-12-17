@@ -1,0 +1,16 @@
+<Wix
+    xmlns="http://wixtoolset.org/schemas/v4/wxs"
+    xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Id="Loggertodb" Name="Loggertodb" Manufacturer="IRMASYS" Version="$(ProductVersion)">
+    <MediaTemplate EmbedCab="yes" />
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Loggertodb" />
+    </StandardDirectory>
+    <Files Include="../dist/loggertodb/**" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+  </Package>
+
+</Wix>

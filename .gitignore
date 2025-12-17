@@ -103,3 +103,7 @@ ENV/
 
 # setuptools-scm
 _version.py
+
+# wix
+installer/bin
+installer/obj

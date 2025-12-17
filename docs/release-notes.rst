@@ -2,10 +2,15 @@
 Release notes
 =============
 
-DEV
-===
+Version 4.3 (2025-12-17)
+========================
 
-Added the ``--insert-all`` command line argument.
+* Added the ``--insert-all`` command line argument.
+* Windows builds now produce an MSI file that installs by default in
+  ``C:\Program Files\Loggertodb``, rather than an EXE file that was
+  unzipping itself each time it was running (which resulted in lots of
+  disk space being wasted if these temporary files were somehow left
+  over).
 
 Version 4.2 (2025-08-23)
 ========================

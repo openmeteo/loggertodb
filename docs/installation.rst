@@ -9,11 +9,12 @@ Installation
 Windows
 =======
 
-``loggertodb`` is just a single executable, ``loggertodb.exe``. You
-download it and run it; there's no installer.
-
-Download ``loggertodb.exe`` from
-https://github.com/openmeteo/loggertodb/releases/.
+Download ``loggertodb.msi`` from
+https://github.com/openmeteo/loggertodb/releases/ and run it to install.
+The installation directory is not added to the Windows path. You need to
+add it yourself or run loggertodb from
+``C:\Program Files\Loggertodb\loggertodb.exe`` or whichever is the
+installation directory.
 
 Linux
 =====

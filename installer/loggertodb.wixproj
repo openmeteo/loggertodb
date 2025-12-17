@@ -1,0 +1,10 @@
+<Project Sdk="WixToolset.Sdk/6.0.0">
+  <PropertyGroup>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <DefineConstants>ProductVersion=$(ProductVersion)</DefineConstants>
+    <OutputName>loggertodb-$(ProductVersion)</OutputName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.0" />
+  </ItemGroup>
+</Project>
